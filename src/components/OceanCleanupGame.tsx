@@ -367,100 +367,30 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
   // Helper
   const ubGameContainerWidth = () => gameContainerRef.current?.clientWidth || 800;
 
-  // Synthesizer Fallback (for Fail/Swish or missing files)
-  const playSynth = (type: string) => {
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-    const ctx = audioCtxRef.current;
-    if (ctx.state === 'suspended') ctx.resume();
-    
-    const t = ctx.currentTime;
-    const gain = ctx.createGain();
-    gain.connect(ctx.destination);
-
-    if (type === 'swish') {
-       // Airy Swoosh
-       const osc = ctx.createOscillator();
-       const g = ctx.createGain();
-       osc.connect(g);
-       g.connect(gain);
-       
-       osc.type = 'triangle';
-       osc.frequency.setValueAtTime(200, t);
-       osc.frequency.exponentialRampToValueAtTime(400, t + 0.15);
-       
-       g.gain.setValueAtTime(0, t);
-       g.gain.linearRampToValueAtTime(0.05, t + 0.05);
-       g.gain.linearRampToValueAtTime(0, t + 0.15);
-       
-       osc.start(t);
-       osc.stop(t + 0.15);
-    } else if (type === 'fail') {
-      // Fail (Dissonant)
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.connect(g);
-      g.connect(gain);
-      
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(150, t);
-      osc.frequency.linearRampToValueAtTime(100, t + 0.3);
-      
-      g.gain.setValueAtTime(0.1, t);
-      g.gain.linearRampToValueAtTime(0.001, t + 0.3);
-      
-      osc.start(t);
-      osc.stop(t + 0.3);
-    }
-    else if (type === 'splash') {
-       // Simple Noise Burst fallback
-       const bufferSize = ctx.sampleRate * 0.2;
-       const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-       const data = buffer.getChannelData(0);
-       for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1);
-       const noise = ctx.createBufferSource();
-       noise.buffer = buffer;
-       const noiseGain = ctx.createGain();
-       noise.connect(noiseGain);
-       noiseGain.connect(gain);
-       noiseGain.gain.setValueAtTime(0.2, t);
-       noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
-       noise.start(t);
-    } else if (type === 'success') {
-         const osc = ctx.createOscillator();
-         osc.connect(gain);
-         osc.frequency.setValueAtTime(600, t);
-         osc.frequency.exponentialRampToValueAtTime(1000, t + 0.1);
-         gain.gain.setValueAtTime(0.1, t);
-         gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
-         osc.start(t); osc.stop(t+0.2);
-    }
-  };
-
   // Audio System
   const playSound = (type: 'success' | 'fail' | 'splash' | 'die' | 'swish') => {
     if (!soundEnabled) return;
 
-    // Use Sound Effects from /public/sounds/ if possible
     const playAudioFile = (filename: string, volume: number = 0.5) => {
         const audio = new Audio(`/sounds/${filename}`);
         audio.volume = volume;
-        audio.play().catch(e => {
-            // Fallback to synthesis if file fails (e.g. not found)
-            console.warn("Sound file issue, using synth:", e);
-            playSynth(type); 
-        });
+        audio.play().catch(e => console.warn("Audio play error:", e));
     };
 
-    if (type === 'splash') {
-        playAudioFile('splash.wav', 0.6);
-    } else if (type === 'success') {
-        playAudioFile('success.wav', 0.4);
-    } else if (type === 'die') {
-        playAudioFile('die.wav', 0.6);
-    } else {
-        playSynth(type);
+    switch (type) {
+        case 'splash':
+            playAudioFile('splash.wav', 0.6);
+            break;
+        case 'success':
+            playAudioFile('success.wav', 0.4);
+            break;
+        case 'die':
+        case 'fail':
+            playAudioFile('die.wav', 0.6);
+            break;
+        case 'swish':
+            // Optional: add a swish sound or leave silent
+            break;
     }
   };
 
