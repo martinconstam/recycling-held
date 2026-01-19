@@ -49,8 +49,17 @@ const processSteps: ProcessStep[] = [
   },
 ];
 
-export default function ProcessSection() {
-  const [selectedStep, setSelectedStep] = useState<number | null>(null);
+interface ProcessSectionProps {
+  profileId?: string;
+  onAddPoints?: (points: number) => void;
+  selectedStep: number | null;
+  onSelectStep: (stepId: number | null) => void;
+}
+
+export default function ProcessSection({
+  selectedStep,
+  onSelectStep,
+}: ProcessSectionProps) {
 
   return (
     <section className="py-16 px-4 bg-white">
@@ -73,7 +82,7 @@ export default function ProcessSection() {
             <div key={step.id} className="relative">
               <button
                 onClick={() =>
-                  setSelectedStep(selectedStep === step.id ? null : step.id)
+                  onSelectStep(selectedStep === step.id ? null : step.id)
                 }
                 className={`w-full bg-white rounded-2xl shadow-lg hover:shadow-2xl transition-all duration-300 p-6 text-left border-2 ${
                   selectedStep === step.id

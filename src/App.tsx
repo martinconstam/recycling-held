@@ -23,6 +23,8 @@ function App() {
   const [showAvatarSelection, setShowAvatarSelection] = useState(true);
   const [showConveyorGame, setShowConveyorGame] = useState(false);
 
+  const [selectedTopicId, setSelectedTopicId] = useState<number | null>(null);
+
   useEffect(() => {
     if (profile) {
       loadLeaderboard();
@@ -104,10 +106,13 @@ function App() {
         <ProcessSection
           profileId={profile?.id}
           onAddPoints={handleAddPoints}
+          selectedStep={selectedTopicId}
+          onSelectStep={setSelectedTopicId}
         />
       </div>
       <QuizSection
         profileId={profile?.id}
+        selectedTopicId={selectedTopicId}
         onQuizComplete={handleQuizComplete}
       />
       <Leaderboard players={leaderboard} />
