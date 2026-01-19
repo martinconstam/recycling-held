@@ -367,44 +367,6 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
   // Helper
   const ubGameContainerWidth = () => gameContainerRef.current?.clientWidth || 800;
 
-  const playSound = (type: 'success' | 'fail' | 'splash' | 'die' | 'swish') => {
-    if (!soundEnabled) return;
-
-    if (!audioCtxRef.current) {
-      audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
-    }
-    const ctx = audioCtxRef.current;
-    if (ctx.state === 'suspended') ctx.resume();
-    
-    const gain = ctx.createGain();
-    gain.connect(ctx.destination);
-    
-  // Audio System
-  const playSound = (type: 'success' | 'fail' | 'splash' | 'die' | 'swish') => {
-    if (!soundEnabled) return;
-
-    // Use Sound Effects from /public/sounds/ if possible
-    const playAudioFile = (filename: string, volume: number = 0.5) => {
-        const audio = new Audio(`/sounds/${filename}`);
-        audio.volume = volume;
-        audio.play().catch(e => {
-            // Fallback to synthesis if file fails (e.g. not found)
-            console.warn("Sound file issue, using synth:", e);
-            playSynth(type); 
-        });
-    };
-
-    if (type === 'splash') {
-        playAudioFile('splash.wav', 0.6);
-    } else if (type === 'success') {
-        playAudioFile('success.wav', 0.4);
-    } else if (type === 'die') {
-        playAudioFile('die.wav', 0.6);
-    } else {
-        playSynth(type);
-    }
-  };
-
   // Synthesizer Fallback (for Fail/Swish or missing files)
   const playSynth = (type: string) => {
     if (!audioCtxRef.current) {
@@ -429,8 +391,8 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
        osc.frequency.exponentialRampToValueAtTime(400, t + 0.15);
        
        g.gain.setValueAtTime(0, t);
-       g.gain.linearRampToValueAtTime(0.05, t + 0.05); // Fade in
-       g.gain.linearRampToValueAtTime(0, t + 0.15); // Fade out
+       g.gain.linearRampToValueAtTime(0.05, t + 0.05);
+       g.gain.linearRampToValueAtTime(0, t + 0.15);
        
        osc.start(t);
        osc.stop(t + 0.15);
@@ -451,7 +413,6 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
       osc.start(t);
       osc.stop(t + 0.3);
     }
-    // Synth fallbacks for others just in case
     else if (type === 'splash') {
        // Simple Noise Burst fallback
        const bufferSize = ctx.sampleRate * 0.2;
@@ -476,6 +437,31 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
          osc.start(t); osc.stop(t+0.2);
     }
   };
+
+  // Audio System
+  const playSound = (type: 'success' | 'fail' | 'splash' | 'die' | 'swish') => {
+    if (!soundEnabled) return;
+
+    // Use Sound Effects from /public/sounds/ if possible
+    const playAudioFile = (filename: string, volume: number = 0.5) => {
+        const audio = new Audio(`/sounds/${filename}`);
+        audio.volume = volume;
+        audio.play().catch(e => {
+            // Fallback to synthesis if file fails (e.g. not found)
+            console.warn("Sound file issue, using synth:", e);
+            playSynth(type); 
+        });
+    };
+
+    if (type === 'splash') {
+        playAudioFile('splash.wav', 0.6);
+    } else if (type === 'success') {
+        playAudioFile('success.wav', 0.4);
+    } else if (type === 'die') {
+        playAudioFile('die.wav', 0.6);
+    } else {
+        playSynth(type);
+    }
   };
 
   const restartGame = () => {
