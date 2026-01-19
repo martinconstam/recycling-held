@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence, PanInfo } from 'framer-motion';
+import { motion, AnimatePresence, PanInfo, useAnimation } from 'framer-motion';
 import { RotateCcw, Volume2, VolumeX, Heart, Trophy } from 'lucide-react';
 
 // --- Types & Constants ---
@@ -58,10 +58,12 @@ export default function ConveyorBeltGame({ onGameComplete, onAddPoints }: Convey
   const [score, setScore] = useState(0);
   const [hearts, setHearts] = useState(3);
   const [items, setItems] = useState<GameItem[]>([]);
-  const [speed, setSpeed] = useState(5);
+  const [speed, setSpeed] = useState(6);
   const [spawnRate, setSpawnRate] = useState(2500);
   const [feedback, setFeedback] = useState<{ id: number; text: string; type: 'good' | 'bad'; x: number; y: number } | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
+  // NEW: Track which bin is currently hovered during drag
+  const [hoveredBin, setHoveredBin] = useState<string | null>(null);
 
   const binRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const itemIdCounter = useRef(0);
@@ -72,6 +74,7 @@ export default function ConveyorBeltGame({ onGameComplete, onAddPoints }: Convey
   useEffect(() => {
     if (!isPlaying) {
       if (spawnTimer.current) clearInterval(spawnTimer.current);
+      setItems([]); // Clear items on stop
       return;
     }
 
@@ -97,9 +100,9 @@ export default function ConveyorBeltGame({ onGameComplete, onAddPoints }: Convey
 
   // Difficulty Scaling
   useEffect(() => {
-    if (score > 10) { setSpeed(4); setSpawnRate(2000); }
-    if (score > 25) { setSpeed(3); setSpawnRate(1500); }
-    if (score > 50) { setSpeed(2.5); setSpawnRate(1200); }
+    if (score > 10) { setSpeed(5); setSpawnRate(2000); }
+    if (score > 25) { setSpeed(4); setSpawnRate(1500); }
+    if (score > 50) { setSpeed(3); setSpawnRate(1200); }
   }, [score]);
 
   const playSound = (type: 'success' | 'fail') => {
@@ -126,21 +129,32 @@ export default function ConveyorBeltGame({ onGameComplete, onAddPoints }: Convey
     }
   };
 
-  const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo, item: GameItem) => {
-    const dropPoint = { x: info.point.x, y: info.point.y };
-    let droppedInBin = null;
-
+  // Check collision using Client Coordinates
+  const checkCollision = (point: { x: number; y: number }) => {
+    let foundBinId: string | null = null;
     binRefs.current.forEach((ref, binId) => {
       const rect = ref.getBoundingClientRect();
+      // Increase hit area slightly for better UX
       if (
-        dropPoint.x >= rect.left &&
-        dropPoint.x <= rect.right &&
-        dropPoint.y >= rect.top &&
-        dropPoint.y <= rect.bottom
+        point.x >= rect.left &&
+        point.x <= rect.right &&
+        point.y >= rect.top &&
+        point.y <= rect.bottom
       ) {
-        droppedInBin = binId;
+        foundBinId = binId;
       }
     });
+    return foundBinId;
+  };
+
+  const handleDrag = (_: any, info: PanInfo) => {
+     const binId = checkCollision(info.point);
+     setHoveredBin(binId);
+  };
+
+  const handleDragEnd = (_: MouseEvent | TouchEvent | PointerEvent, info: PanInfo, item: GameItem) => {
+    setHoveredBin(null);
+    const droppedInBin = checkCollision(info.point);
 
     if (droppedInBin) {
       verifySort(item, droppedInBin);
@@ -176,12 +190,18 @@ export default function ConveyorBeltGame({ onGameComplete, onAddPoints }: Convey
   const showFeedback = (id: number, text: string, type: 'good' | 'bad', binId: string) => {
     const binRect = binRefs.current.get(binId)?.getBoundingClientRect();
     if (binRect) {
+      // Calculate position relative to the container for the feedback popup
+      // Note: This assumes container is not excessively transformed
+      const containerRect = beltRef.current?.getBoundingClientRect();
+      const x = binRect.left + binRect.width / 2 - (containerRect?.left || 0);
+      const y = binRect.top - (containerRect?.top || 0) + 50; 
+
       setFeedback({
         id,
         text,
         type,
-        x: binRect.left + binRect.width / 2, 
-        y: binRect.top 
+        x, 
+        y
       });
       setTimeout(() => setFeedback(null), 1000);
     }
@@ -206,7 +226,7 @@ export default function ConveyorBeltGame({ onGameComplete, onAddPoints }: Convey
     setScore(0);
     setHearts(3);
     setItems([]);
-    setSpeed(5);
+    setSpeed(6);
     setSpawnRate(2500);
     setIsPlaying(true);
   };
@@ -265,6 +285,7 @@ export default function ConveyorBeltGame({ onGameComplete, onAddPoints }: Convey
 
       <div className="relative bg-gray-100 rounded-3xl border-4 border-gray-300 overflow-hidden h-[500px] shadow-inner mb-6" ref={beltRef}>
         
+        {/* Conveyor Belt Visuals */}
         <div className="absolute top-[30%] left-0 right-0 h-40 bg-[#333] border-y-8 border-[#222]">
            <div className="absolute inset-0 opacity-20" style={{
              backgroundImage: 'repeating-linear-gradient(90deg, transparent 0, transparent 40px, #000 40px, #000 44px)',
@@ -273,6 +294,7 @@ export default function ConveyorBeltGame({ onGameComplete, onAddPoints }: Convey
         </div>
         <style>{`@keyframes moveBelt { from { background-position: 0 0; } to { background-position: -44px 0; } }`}</style>
         
+        {/* Items */}
         <AnimatePresence>
           {items.map(item => (
             <WasteItem 
@@ -280,22 +302,25 @@ export default function ConveyorBeltGame({ onGameComplete, onAddPoints }: Convey
               item={item} 
               duration={speed} 
               onDragEnd={handleDragEnd}
+              onDrag={handleDrag}
               onMissed={handleMissedItem}
             />
           ))}
         </AnimatePresence>
 
+        {/* Bins */}
         <div className="absolute bottom-4 left-4 right-4 flex justify-around items-end gap-2">
            {BINS.map(bin => (
              <div 
                key={bin.id}
                ref={(el) => { if(el) binRefs.current.set(bin.id, el); }}
                className={`
-                 relative flex flex-col items-center justify-end p-4 rounded-xl border-b-8 w-1/4 h-48 transition-colors
+                 relative flex flex-col items-center justify-end p-4 rounded-xl border-b-8 w-1/4 h-48 transition-all duration-200
                  ${bin.bgGradient} ${bin.color}
+                 ${hoveredBin === bin.id ? 'scale-110 ring-4 ring-white shadow-2xl z-10' : 'opacity-90'}
                `}
              >
-                <div className="text-5xl mb-2 filter drop-shadow-lg transform transition-transform hover:scale-110">
+                <div className="text-5xl mb-2 filter drop-shadow-lg transform transition-transform">
                   {bin.icon}
                 </div>
                 <div className="bg-white/90 px-3 py-1 rounded-full font-bold text-gray-700 text-sm shadow-sm whitespace-nowrap">
@@ -305,6 +330,7 @@ export default function ConveyorBeltGame({ onGameComplete, onAddPoints }: Convey
            ))}
         </div>
 
+        {/* Feedback */}
         <AnimatePresence>
           {feedback && (
             <motion.div
@@ -313,9 +339,8 @@ export default function ConveyorBeltGame({ onGameComplete, onAddPoints }: Convey
               exit={{ opacity: 0 }}
               className={`absolute z-50 px-6 py-2 rounded-full font-bold text-white shadow-xl ${feedback.type === 'good' ? 'bg-green-500' : 'bg-red-500'}`}
               style={{ 
-                left: '50%', 
-                top: '20%', 
-                transform: 'translate(-50%, -50%)' 
+                left: feedback.x,
+                top: feedback.y,
               }}
             >
               {feedback.text}
@@ -332,37 +357,59 @@ export default function ConveyorBeltGame({ onGameComplete, onAddPoints }: Convey
   );
 }
 
+// --- Subcomponent: Draggable Waste Item ---
 interface WasteItemProps {
   item: GameItem;
   duration: number;
   onDragEnd: (e: any, info: any, item: GameItem) => void;
+  onDrag: (e: any, info: any) => void;
   onMissed: (id: number) => void;
 }
 
-function WasteItem({ item, duration, onDragEnd, onMissed }: WasteItemProps) {
+function WasteItem({ item, duration, onDragEnd, onDrag, onMissed }: WasteItemProps) {
+  const controls = useAnimation();
+  const [isDragging, setIsDragging] = useState(false);
+
+  useEffect(() => {
+    if (!isDragging) {
+      controls.start({
+        x: '-20%',
+        transition: {
+          duration: duration,
+          ease: 'linear',
+        }
+      });
+    } else {
+      controls.stop();
+    }
+  }, [duration, controls, isDragging]);
+  
   return (
     <motion.div
-      layoutId={`waste-${item.id}`}
-      initial={{ x: '110%', y: '160%' }} 
-      animate={{ 
-        x: '-20%',
-        transition: { 
-           duration: duration, 
-           ease: 'linear',
-           repeat: 0 
+      initial={{ x: '110%' }} 
+      animate={controls}
+      onAnimationComplete={(definition: any) => {
+        // Only trigger missed if we actually reached the target (-20%)
+        // definition can be the object { x: ... }
+        if (definition?.x === '-20%' && !isDragging) {
+           onMissed(item.id);
         }
       }}
-      onAnimationComplete={() => onMissed(item.id)}
       drag
       dragSnapToOrigin 
       dragElastic={0.1}
       dragMomentum={false}
+      onDragStart={() => setIsDragging(true)}
+      onDrag={(e, info) => onDrag(e, info)}
+      onDragEnd={(e, info) => {
+        setIsDragging(false);
+        onDragEnd(e, info, item);
+      }}
       whileDrag={{ scale: 1.2, rotate: 15, cursor: 'grabbing', zIndex: 50 }}
-      whileHover={{ scale: 1.1, cursor: 'grab' }}
-      onDragEnd={(e, info) => onDragEnd(e, info, item)}
+      whileHover={{ scale: 1.1, cursor: 'grab', zIndex: 40 }}
       className="absolute top-0 left-0 text-6xl select-none touch-none filter drop-shadow-xl"
       style={{ 
-        y: 140 + item.lane 
+        y: 190 + item.lane 
       }}
     >
       {item.data.icon}
