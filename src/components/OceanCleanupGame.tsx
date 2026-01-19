@@ -90,13 +90,14 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
 
   useEffect(() => {
       if (bgMusicRef.current) {
-          if (isPlaying && soundEnabled) {
+          // Play music if game is playing OR game over (hearts <= 0), providing sound is enabled
+          if ((isPlaying || hearts <= 0) && soundEnabled) {
               bgMusicRef.current.play().catch(e => console.warn("Bg music play error:", e));
           } else {
               bgMusicRef.current.pause();
           }
       }
-  }, [isPlaying, soundEnabled]);
+  }, [isPlaying, hearts, soundEnabled]);
 
   // Mouse movement handler
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -436,29 +437,8 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
   };
 
 
-  if (!isPlaying && hearts <= 0) {
-    return (
-      <div className="flex flex-col items-center justify-center p-10 bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl max-w-2xl mx-auto mt-10 border border-blue-200">
-        <Trophy className="w-24 h-24 text-blue-500 mb-6" />
-        <h2 className="text-4xl font-black text-gray-800 mb-2">Ozean Gereinigt!</h2>
-        <p className="text-xl text-gray-500 mb-8">Du hast {score} Teile Müll aus dem Meer gefischt.</p>
-        <div className="flex gap-4">
-             <button
-              onClick={onBack}
-              className="px-8 py-3 rounded-xl border-2 border-gray-200 font-bold text-gray-600 hover:bg-gray-50 transition"
-            >
-              Beenden
-            </button>
-            <button
-              onClick={restartGame}
-              className="bg-blue-600 hover:bg-blue-700 text-white text-xl font-bold py-3 px-10 rounded-xl shadow-lg transform transition hover:scale-105"
-            >
-              Nochmal Retten 🌊
-            </button>
-        </div>
-      </div>
-    );
-  }
+  // Removed early return for Game Over to allow "Black Sea" rendering
+  // if (!isPlaying && hearts <= 0) { ... }
 
   return (
     <div className="relative w-full max-w-6xl mx-auto p-4 select-none lg:h-[800px] flex flex-col">
@@ -496,7 +476,7 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
         ref={gameContainerRef}
         onMouseMove={handleMouseMove}
         onMouseDown={handleMouseDown}
-        className="relative flex-grow w-full bg-gradient-to-b from-sky-300 via-blue-500 to-indigo-900 rounded-3xl overflow-hidden shadow-inner cursor-none border-4 border-white/50 z-0"
+        className={`relative flex-grow w-full rounded-3xl overflow-hidden shadow-inner cursor-none border-4 transition-colors duration-1000 z-0 ${hearts <= 0 ? 'bg-gray-900 border-gray-700' : 'bg-gradient-to-b from-sky-300 via-blue-500 to-indigo-900 border-white/50'}`}
       >
           {/* --- Waves at Surface --- */}
           <div className="absolute top-[40px] left-0 right-0 h-16 z-0 opacity-50">
@@ -673,6 +653,31 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
              {/* Handle */}
              <div className="absolute top-full left-1/2 w-2 h-20 bg-amber-700 -translate-x-1/2 rounded-full shadow-lg origin-top transform -rotate-12"></div>
           </div>
+
+          {/* Game Over Overlay */}
+          {!isPlaying && hearts <= 0 && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-1000">
+              <div className="flex flex-col items-center justify-center p-10 bg-white/90 backdrop-blur-md rounded-3xl shadow-2xl max-w-2xl mx-auto border-4 border-gray-800">
+                <Trophy className="w-24 h-24 text-gray-800 mb-6" />
+                <h2 className="text-4xl font-black text-gray-900 mb-2">Ozean Zerstört!</h2>
+                <p className="text-xl text-gray-600 mb-8">Du hast {score} Teile gerettet, aber es war nicht genug.</p>
+                <div className="flex gap-4">
+                    <button
+                      onClick={onBack}
+                      className="px-8 py-3 rounded-xl border-2 border-gray-400 font-bold text-gray-700 hover:bg-gray-200 transition"
+                    >
+                      Beenden
+                    </button>
+                    <button
+                      onClick={restartGame}
+                      className="bg-gray-900 hover:bg-black text-white text-xl font-bold py-3 px-10 rounded-xl shadow-lg transform transition hover:scale-105"
+                    >
+                      Nochmal Versuchen 💀
+                    </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Tutorial Text */}
           {score === 0 && (
