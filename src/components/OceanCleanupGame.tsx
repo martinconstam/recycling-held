@@ -249,27 +249,6 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
 
         return nextItems;
       });
-               <div className="absolute bottom-0 left-0 w-full h-32 flex justify-around px-8 items-end pointer-events-none z-20">
-                   {[...Array(6)].map((_, i) => (
-                       <motion.div 
-                         key={i}
-                         animate={{ rotate: [0, 5, 0, -5, 0] }}
-                         transition={{ 
-                             duration: 3 + Math.random() * 2, // ~4 seconds cycle (faster)
-                             repeat: Infinity, 
-                             ease: 'easeInOut', 
-                             delay: i * 0.5 
-                         }}
-                         className="origin-bottom filter brightness-90"
-                         style={{ transform: `scale(${0.8 + Math.random() * 0.5})` }}
-                       >
-                           <span className="text-5xl drop-shadow-md">
-                               {['🌿', '🪸', '🎍', '🌾'][i % 4]}
-                           </span>
-                       </motion.div>
-                   ))}
-               </div>
-          </div>
 
       // Spawn Creatures
        if (timestamp - lastCreatureSpawnTime.current > 3000) {
@@ -613,7 +592,7 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
       {/* ... */}
       
           {/* --- Sand Floor & Plants --- */}
-          <div className="absolute bottom-0 w-full h-40 z-10 pointers-events-none">
+          <div className="absolute bottom-0 w-full h-40 z-10 pointer-events-none">
              {/* Back Dune */}
              <svg className="absolute bottom-0 w-full h-32" preserveAspectRatio="none" viewBox="0 0 1440 320">
                <path fill="#C2B280" fillOpacity="1" d="M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,224C672,245,768,267,864,261.3C960,256,1056,224,1152,197.3C1248,171,1344,149,1392,138.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
@@ -637,10 +616,10 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
                          key={i}
                          animate={{ rotate: [0, 5, 0, -5, 0] }}
                          transition={{ 
-                             duration: 8 + Math.random() * 4, // 8-12 seconds cycle (very slow)
+                             duration: 3 + Math.random() * 2, // ~4 seconds cycle (faster)
                              repeat: Infinity, 
                              ease: 'easeInOut', 
-                             delay: i * 1.5 
+                             delay: i * 0.5 
                          }}
                          className="origin-bottom filter brightness-90"
                          style={{ transform: `scale(${0.8 + Math.random() * 0.5})` }}
