@@ -379,6 +379,8 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
     const gain = ctx.createGain();
     gain.connect(ctx.destination);
     
+    const t = ctx.currentTime;
+
     if (type === 'splash') {
        // A realistic splash is a mix of: Impact (Low Thud) + Spray (Noise) + Droplets (Bubbles)
        
