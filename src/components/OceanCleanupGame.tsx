@@ -4,11 +4,13 @@ import { Heart, Trophy, RotateCcw, Volume2, VolumeX } from 'lucide-react';
 
 interface TrashItem {
   id: number;
+  startX: number;
   x: number;
   y: number;
   type: 'plastic' | 'metal' | 'glass';
   icon: string;
   rotation: number;
+  enteredWater: boolean;
 }
 
 interface SeaCreature {
@@ -163,13 +165,16 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
       // Spawn Trash
       if (timestamp - lastSpawnTime.current > spawnInterval) {
         const randomType = TRASH_TYPES[Math.floor(Math.random() * TRASH_TYPES.length)];
+        const startX = Math.random() * (gameContainerRef.current?.clientWidth || 800);
         const newTrash: TrashItem = {
           id: timestamp,
-          x: Math.random() * (gameContainerRef.current?.clientWidth || 800),
+          startX: startX, // Store initial X for sine wave calculation
+          x: startX,
           y: -50,
           type: randomType.type as any,
           icon: randomType.icon,
           rotation: Math.random() * 360,
+          enteredWater: false
         };
         setTrashItems(prev => [...prev, newTrash]);
         lastSpawnTime.current = timestamp;
@@ -200,17 +205,49 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
         const nextItems: TrashItem[] = [];
         let hitBottom = false;
         let hitX = 0;
+        const waterLevel = 50; // Visual top of water
 
         prev.forEach(item => {
           const newY = item.y + (3 + scoreRef.current * 0.05); 
           
+          // Calculate new X with sine wave for 'snake lines'
+          const waveAmplitude = 20; 
+          const waveFrequency = 0.02;
+          const newX = item.startX + Math.sin(newY * waveFrequency) * waveAmplitude;
+
+          // Check if entering water
+          let justEntered = false;
+          if (!item.enteredWater && newY > waterLevel) {
+              justEntered = true;
+          }
+
+          if (justEntered) {
+             // Trigger Splash Effect on Entry
+             splashIdCounter.current += 1;
+             const newSplash = { id: splashIdCounter.current, x: newX, y: waterLevel };
+             setSplashes(current => {
+                 const updated = [...current, newSplash];
+                 setTimeout(() => {
+                    setSplashes(curr => curr.filter(s => s.id !== newSplash.id));
+                 }, 500);
+                 return updated;
+             });
+             playSound('splash');
+          }
+
           if (newY > containerHeight) {
              if (!hitBottom) {
                  hitBottom = true; 
                  hitX = item.x;
              }
           } else {
-            nextItems.push({ ...item, y: newY, rotation: item.rotation + 1 });
+            nextItems.push({ 
+                ...item, 
+                x: newX, 
+                y: newY, 
+                rotation: item.rotation + 1,
+                enteredWater: item.enteredWater || justEntered
+            });
           }
         });
 
@@ -441,25 +478,36 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
                ))}
           </div>
 
-          {/* --- Sand Floor & Plants --- */}
-          <div className="absolute bottom-0 w-full h-32 z-10">
-               {/* Sand Gradient */}
-               <div className="absolute inset-0 bg-gradient-to-t from-[#E6D5AC] to-[#F4E4BC] border-t-8 border-[#D4C39C]/50 rounded-t-[50px] transform scale-110 translate-y-4"></div>
-               {/* Sand Texture */}
-               <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#8B4513 1px, transparent 1px)', backgroundSize: '16px 16px' }}></div>
-               
-               {/* Plants */}
-               <div className="absolute bottom-4 left-0 w-full flex justify-around px-8 items-end pointer-events-none">
-                   {[...Array(6)].map((_, i) => (
+          {/* --- Improved Sand Floor --- */}
+          <div className="absolute bottom-0 w-full h-40 z-10 pointer-events-none">
+             {/* Back Dune */}
+             <svg className="absolute bottom-0 w-full h-32" preserveAspectRatio="none" viewBox="0 0 1440 320">
+               <path fill="#C2B280" fillOpacity="1" d="M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,224C672,245,768,267,864,261.3C960,256,1056,224,1152,197.3C1248,171,1344,149,1392,138.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+             </svg>
+             
+             {/* Front Dune */}
+             <svg className="absolute bottom-0 w-full h-24" preserveAspectRatio="none" viewBox="0 0 1440 320">
+                <defs>
+                   <pattern id="sandPattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
+                      <circle cx="2" cy="2" r="1" fill="#8B4513" opacity="0.1" />
+                   </pattern>
+                </defs>
+               <path fill="#E6D5AC" fillOpacity="1" d="M0,96L48,112C96,128,192,160,288,186.7C384,213,480,235,576,213.3C672,192,768,128,864,122.7C960,117,1056,171,1152,197.3C1248,224,1344,224,1392,224L1440,224L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
+               <rect width="100%" height="100%" fill="url(#sandPattern)" style={{mixBlendMode: 'overlay'}} clipPath="url(#frontDuneClip)" />
+             </svg>
+             
+             {/* Plants */}
+               <div className="absolute bottom-0 left-0 w-full h-32 flex justify-around px-8 items-end pointer-events-none z-20">
+                   {[...Array(8)].map((_, i) => (
                        <motion.div 
                          key={i}
-                         animate={{ rotate: [0, 5, 0, -5, 0] }}
-                         transition={{ duration: 3 + Math.random() * 2, repeat: Infinity, ease: 'easeInOut', delay: i * 0.5 }}
-                         className="origin-bottom filter brightness-90"
-                         style={{ transform: `scale(${0.8 + Math.random() * 0.5})` }}
+                         animate={{ rotate: [0, 8, 0, -8, 0], scaleY: [1, 1.1, 1] }}
+                         transition={{ duration: 4 + Math.random() * 3, repeat: Infinity, ease: 'easeInOut', delay: i * 0.7 }}
+                         className="origin-bottom filter brightness-90 drop-shadow-lg"
+                         style={{ transform: `scale(${0.7 + Math.random() * 0.6})`, marginBottom: Math.random() * 20 + 'px' }}
                        >
-                           <span className="text-5xl drop-shadow-md">
-                               {['🌿', '🪸', '🎍', '🌾'][i % 4]}
+                           <span className="text-5xl">
+                               {['🌿', '🪸', '🎍', '🌾', '🌱'][i % 5]}
                            </span>
                        </motion.div>
                    ))}
