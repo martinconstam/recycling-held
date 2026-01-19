@@ -380,47 +380,64 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
     gain.connect(ctx.destination);
     
     if (type === 'splash') {
-       const t = ctx.currentTime;
+       // A realistic splash is a mix of: Impact (Low Thud) + Spray (Noise) + Droplets (Bubbles)
        
-       // 1. Impact "Thud" (Low Sine Drop)
-       const osc = ctx.createOscillator();
-       const oscGain = ctx.createGain();
-       osc.connect(oscGain);
-       oscGain.connect(gain);
-       
-       osc.frequency.setValueAtTime(150, t);
-       osc.frequency.exponentialRampToValueAtTime(50, t + 0.1);
-       oscGain.gain.setValueAtTime(0.5, t);
-       oscGain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
-       osc.start(t);
-       osc.stop(t + 0.1);
+       // Helper to create a "bubble" or "droplet" sound
+       const playBubble = (startTime: number, detune: number = 0) => {
+           const osc = ctx.createOscillator();
+           const g = ctx.createGain();
+           osc.connect(g);
+           g.connect(gain);
 
-       // 2. Spray "Wishhh" (Filtered Noise)
+           const freq = 400 + Math.random() * 400 + detune;
+           osc.frequency.setValueAtTime(freq, startTime);
+           osc.frequency.exponentialRampToValueAtTime(freq * 0.5, startTime + 0.1);
+           
+           g.gain.setValueAtTime(0.5, startTime);
+           g.gain.exponentialRampToValueAtTime(0.01, startTime + 0.1);
+           
+           osc.start(startTime);
+           osc.stop(startTime + 0.1);
+       };
+
+       // 1. Impact
+       const thud = ctx.createOscillator();
+       const thudGain = ctx.createGain();
+       thud.connect(thudGain);
+       thudGain.connect(gain);
+       thud.frequency.setValueAtTime(120, t);
+       thud.frequency.exponentialRampToValueAtTime(40, t + 0.15);
+       thudGain.gain.setValueAtTime(0.5, t);
+       thudGain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
+       thud.start(t);
+       thud.stop(t + 0.15);
+
+       // 2. Spray (filtered noise)
        const bufferSize = ctx.sampleRate * 0.5;
        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
        const data = buffer.getChannelData(0);
-       for (let i = 0; i < bufferSize; i++) {
-         data[i] = (Math.random() * 2 - 1); 
-       }
+       for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1);
+       
        const noise = ctx.createBufferSource();
        noise.buffer = buffer;
-       
        const noiseFilter = ctx.createBiquadFilter();
        noiseFilter.type = 'lowpass';
        noiseFilter.frequency.setValueAtTime(800, t);
-       noiseFilter.frequency.linearRampToValueAtTime(100, t + 0.4);
-       
+       noiseFilter.frequency.linearRampToValueAtTime(200, t + 0.3);
        const noiseGain = ctx.createGain();
-       
        noise.connect(noiseFilter);
        noiseFilter.connect(noiseGain);
        noiseGain.connect(gain);
-       
-       noiseGain.gain.setValueAtTime(0.8, t);
-       noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
-       
+       noiseGain.gain.setValueAtTime(0.4, t); // Lower volume for spray
+       noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
        noise.start(t);
-       noise.stop(t + 0.4);
+       noise.stop(t + 0.3);
+
+       // 3. Droplets (Random scattered bubbles)
+       playBubble(t + 0.05);
+       playBubble(t + 0.1, 100);
+       playBubble(t + 0.15, -50);
+       playBubble(t + 0.25, 200);
 
     } else {
         const osc = ctx.createOscillator();
