@@ -19,20 +19,42 @@ interface BinConfig {
 }
 
 const WASTE_TYPES: WasteType[] = [
+  // Papier
   { type: 'paper', icon: '📰', name: 'Alte Zeitung' },
   { type: 'paper', icon: '📦', name: 'Karton' },
   { type: 'paper', icon: '📝', name: 'Papierblatt' },
+  { type: 'paper', icon: '✉️', name: 'Briefumschlag' },
+  { type: 'paper', icon: '🛍️', name: 'Papiertüte' },
+  { type: 'paper', icon: '🧻', name: 'Klorolle (Pappe)' },
+
+  // Plastik / Gelber Sack
   { type: 'plastic', icon: '🥤', name: 'Plastikbecher' },
   { type: 'plastic', icon: '🧴', name: 'Shampooflasche' },
   { type: 'plastic', icon: '🥡', name: 'Plastikbox' },
+  { type: 'plastic', icon: '🧃', name: 'Saftkarton' },
+  { type: 'plastic', icon: '🦷', name: 'Zahnbürste' },
+  { type: 'plastic', icon: '🍓', name: 'Obstschale' },
+
+  // Glas
   { type: 'glass', icon: '🍷', name: 'Weinflasche' },
   { type: 'glass', icon: '🫙', name: 'Gurkenglas' },
   { type: 'glass', icon: '🥛', name: 'Milchflasche' },
-  { type: 'metal', icon: '🥫', name: 'Konserve' },
-  { type: 'metal', icon: '🥤', name: 'Cola Dose' },
+  { type: 'glass', icon: '🍾', name: 'Sektflasche' },
+  { type: 'glass', icon: '🏺', name: 'Parfumflakon' },
+
+  // Metall (in Rest/Wertstoff)
+  { type: 'metal', icon: '🥫', name: 'Konservendose' },
+  { type: 'metal', icon: '🥄', name: 'Alter Löffel' },
+  { type: 'metal', icon: '🗝️', name: 'Schlüssel' },
+  { type: 'metal', icon: '📎', name: 'Büroklammer' },
+
+  // Bio / Organisch
   { type: 'organic', icon: '🍎', name: 'Apfelrest' },
   { type: 'organic', icon: '🍌', name: 'Banane' },
   { type: 'organic', icon: '🍂', name: 'Laub' },
+  { type: 'organic', icon: '🥚', name: 'Eierschale' },
+  { type: 'organic', icon: '🥀', name: 'Blumenreste' },
+  { type: 'organic', icon: '🦴', name: 'Knochen' },
 ];
 
 const BINS: BinConfig[] = [
