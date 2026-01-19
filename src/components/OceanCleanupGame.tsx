@@ -527,18 +527,16 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
              
              {/* Plants */}
                <div className="absolute bottom-0 left-0 w-full h-32 flex justify-around px-8 items-end pointer-events-none z-20">
-                   {[...Array(8)].map((_, i) => (
-                       <motion.div 
+                   {[...Array(6)].map((_, i) => (
+                       <div 
                          key={i}
-                         animate={{ rotate: [0, 8, 0, -8, 0], scaleY: [1, 1.1, 1] }}
-                         transition={{ duration: 4 + Math.random() * 3, repeat: Infinity, ease: 'easeInOut', delay: i * 0.7 }}
-                         className="origin-bottom filter brightness-90 drop-shadow-lg"
-                         style={{ transform: `scale(${0.7 + Math.random() * 0.6})`, marginBottom: Math.random() * 20 + 'px' }}
+                         className="origin-bottom filter brightness-90"
+                         style={{ transform: `scale(${0.8 + Math.random() * 0.5})` }}
                        >
-                           <span className="text-5xl">
-                               {['🌿', '🪸', '🎍', '🌾', '🌱'][i % 5]}
+                           <span className="text-5xl drop-shadow-md">
+                               {['🌿', '🪸', '🎍', '🌾'][i % 4]}
                            </span>
-                       </motion.div>
+                       </div>
                    ))}
                </div>
           </div>
