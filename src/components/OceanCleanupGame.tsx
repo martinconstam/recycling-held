@@ -386,7 +386,7 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
 
     switch (type) {
         case 'splash':
-            playAudioFile('splash.mp3', 0.6);
+            // playAudioFile('splash.mp3', 0.6); // Mute splash
             break;
         case 'success':
             playAudioFile('success.mp3', 0.4);
