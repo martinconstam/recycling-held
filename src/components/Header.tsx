@@ -35,32 +35,40 @@ export default function Header({ profile }: HeaderProps) {
           </div>
           
           {profile && (
-            <div className="flex items-center gap-3 bg-white/10 p-2 pl-4 rounded-xl border border-white/20 backdrop-blur-sm">
-                {/* Info Block */}
-                <div className="flex flex-col items-end justify-center">
-                    <div className="flex items-center gap-2 text-sm leading-none mb-1">
-                        <span className="font-bold text-white shadow-black drop-shadow-sm">{profile.username}</span>
-                        <span className="bg-yellow-500 text-yellow-900 text-[10px] font-black px-1.5 py-0.5 rounded shadow-sm">
-                            LVL {profile.level}
+            <div className="flex items-center gap-4 bg-white/10 py-2 px-4 rounded-2xl border border-white/20 backdrop-blur-sm shadow-sm min-w-[280px]">
+                {/* Avatar (Left) */}
+                <div className="w-12 h-12 bg-white rounded-xl flex items-center justify-center text-3xl shadow-inner border-2 border-green-200 shrink-0">
+                    {AVATARS[profile.avatar_index] || '👤'}
+                </div>
+
+                {/* Info Block (Right) */}
+                <div className="flex flex-col flex-grow justify-center">
+                    {/* Top Row: Name & Level */}
+                    <div className="flex justify-between items-center mb-1">
+                        <span className="font-bold text-white text-base shadow-black drop-shadow-sm truncate max-w-[120px]">
+                            {profile.username}
                         </span>
+                        <div className="flex items-center gap-2">
+                             <div className="flex flex-col items-end leading-none">
+                                <span className="text-[10px] text-green-100 uppercase font-bold tracking-wider">Level</span>
+                                <span className="text-xl font-black text-yellow-300 drop-shadow-sm leading-none">{profile.level}</span>
+                             </div>
+                        </div>
                     </div>
-                    {/* Points & Progress */}
-                    <div className="w-32 flex flex-col items-end gap-0.5">
-                        <div className="w-full bg-black/20 h-1.5 rounded-full overflow-hidden">
+                    
+                    {/* Bottom Row: Progress & Points */}
+                    <div className="w-full">
+                        <div className="flex justify-between text-[10px] text-green-50 mb-0.5 font-medium">
+                           <span>Fortschritt</span>
+                           <span className="font-mono">{profile.total_points} / {nextLevelPoints} XP</span>
+                        </div>
+                        <div className="w-full bg-black/20 h-2.5 rounded-full overflow-hidden border border-white/10">
                              <div 
-                                className="bg-yellow-400 h-full rounded-full transition-all duration-500"
+                                className="bg-gradient-to-r from-yellow-300 to-yellow-500 h-full rounded-full transition-all duration-500 shadow-sm"
                                 style={{ width: `${Math.min(progressPercent, 100)}%` }}
                              />
                         </div>
-                        <span className="text-[10px] text-green-100 font-mono">
-                            {profile.total_points} / {nextLevelPoints} XP
-                        </span>
                     </div>
-                </div>
-
-                {/* Avatar */}
-                <div className="w-10 h-10 bg-white rounded-lg flex items-center justify-center text-2xl shadow-inner border-2 border-green-200">
-                    {AVATARS[profile.avatar_index] || '👤'}
                 </div>
             </div>
           )}
