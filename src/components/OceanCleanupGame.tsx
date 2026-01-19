@@ -379,155 +379,103 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
     const gain = ctx.createGain();
     gain.connect(ctx.destination);
     
-    const t = ctx.currentTime;
+  // Audio System
+  const playSound = (type: 'success' | 'fail' | 'splash' | 'die' | 'swish') => {
+    if (!soundEnabled) return;
+
+    // Use Sound Effects from /public/sounds/ if possible
+    const playAudioFile = (filename: string, volume: number = 0.5) => {
+        const audio = new Audio(`/sounds/${filename}`);
+        audio.volume = volume;
+        audio.play().catch(e => {
+            // Fallback to synthesis if file fails (e.g. not found)
+            console.warn("Sound file issue, using synth:", e);
+            playSynth(type); 
+        });
+    };
 
     if (type === 'splash') {
-       // A realistic splash is a mix of: Impact (Low Thud) + Spray (Noise) + Droplets (Bubbles)
+        playAudioFile('splash.wav', 0.6);
+    } else if (type === 'success') {
+        playAudioFile('success.wav', 0.4);
+    } else if (type === 'die') {
+        playAudioFile('die.wav', 0.6);
+    } else {
+        playSynth(type);
+    }
+  };
+
+  // Synthesizer Fallback (for Fail/Swish or missing files)
+  const playSynth = (type: string) => {
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    const ctx = audioCtxRef.current;
+    if (ctx.state === 'suspended') ctx.resume();
+    
+    const t = ctx.currentTime;
+    const gain = ctx.createGain();
+    gain.connect(ctx.destination);
+
+    if (type === 'swish') {
+       // Airy Swoosh
+       const osc = ctx.createOscillator();
+       const g = ctx.createGain();
+       osc.connect(g);
+       g.connect(gain);
        
-       // Helper to create a "bubble" or "droplet" sound
-       const playBubble = (startTime: number, detune: number = 0) => {
-           const osc = ctx.createOscillator();
-           const g = ctx.createGain();
-           osc.connect(g);
-           g.connect(gain);
-
-           const freq = 400 + Math.random() * 400 + detune;
-           osc.frequency.setValueAtTime(freq, startTime);
-           osc.frequency.exponentialRampToValueAtTime(freq * 0.5, startTime + 0.1);
-           
-           g.gain.setValueAtTime(0.5, startTime);
-           g.gain.exponentialRampToValueAtTime(0.01, startTime + 0.1);
-           
-           osc.start(startTime);
-           osc.stop(startTime + 0.1);
-       };
-
-       // 1. Impact
-       const thud = ctx.createOscillator();
-       const thudGain = ctx.createGain();
-       thud.connect(thudGain);
-       thudGain.connect(gain);
-       thud.frequency.setValueAtTime(120, t);
-       thud.frequency.exponentialRampToValueAtTime(40, t + 0.15);
-       thudGain.gain.setValueAtTime(0.5, t);
-       thudGain.gain.exponentialRampToValueAtTime(0.01, t + 0.15);
-       thud.start(t);
-       thud.stop(t + 0.15);
-
-       // 2. Spray (filtered noise)
-       const bufferSize = ctx.sampleRate * 0.5;
+       osc.type = 'triangle';
+       osc.frequency.setValueAtTime(200, t);
+       osc.frequency.exponentialRampToValueAtTime(400, t + 0.15);
+       
+       g.gain.setValueAtTime(0, t);
+       g.gain.linearRampToValueAtTime(0.05, t + 0.05); // Fade in
+       g.gain.linearRampToValueAtTime(0, t + 0.15); // Fade out
+       
+       osc.start(t);
+       osc.stop(t + 0.15);
+    } else if (type === 'fail') {
+      // Fail (Dissonant)
+      const osc = ctx.createOscillator();
+      const g = ctx.createGain();
+      osc.connect(g);
+      g.connect(gain);
+      
+      osc.type = 'sawtooth';
+      osc.frequency.setValueAtTime(150, t);
+      osc.frequency.linearRampToValueAtTime(100, t + 0.3);
+      
+      g.gain.setValueAtTime(0.1, t);
+      g.gain.linearRampToValueAtTime(0.001, t + 0.3);
+      
+      osc.start(t);
+      osc.stop(t + 0.3);
+    }
+    // Synth fallbacks for others just in case
+    else if (type === 'splash') {
+       // Simple Noise Burst fallback
+       const bufferSize = ctx.sampleRate * 0.2;
        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
        const data = buffer.getChannelData(0);
        for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1);
-       
        const noise = ctx.createBufferSource();
        noise.buffer = buffer;
-       const noiseFilter = ctx.createBiquadFilter();
-       noiseFilter.type = 'lowpass';
-       noiseFilter.frequency.setValueAtTime(800, t);
-       noiseFilter.frequency.linearRampToValueAtTime(200, t + 0.3);
        const noiseGain = ctx.createGain();
-       noise.connect(noiseFilter);
-       noiseFilter.connect(noiseGain);
+       noise.connect(noiseGain);
        noiseGain.connect(gain);
-       noiseGain.gain.setValueAtTime(0.4, t); // Lower volume for spray
-       noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.3);
+       noiseGain.gain.setValueAtTime(0.2, t);
+       noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
        noise.start(t);
-       noise.stop(t + 0.3);
-
-       // 3. Droplets (Random scattered bubbles)
-       playBubble(t + 0.05);
-       playBubble(t + 0.1, 100);
-       playBubble(t + 0.15, -50);
-       playBubble(t + 0.25, 200);
-
-    } else {
-        const t = ctx.currentTime;
-        
-        if (type === 'success') {
-          // Pleasant Chord Arpeggio (C Major: C, E, G)
-          [0, 0.05, 0.1].forEach((delay, i) => {
-              const osc = ctx.createOscillator();
-              const g = ctx.createGain();
-              osc.connect(g);
-              g.connect(gain);
-              
-              // Frequencies for C5, E5, G5
-              const freqs = [523.25, 659.25, 783.99];
-              
-              osc.type = 'sine';
-              osc.frequency.setValueAtTime(freqs[i], t + delay);
-              
-              g.gain.setValueAtTime(0.1, t + delay);
-              g.gain.exponentialRampToValueAtTime(0.01, t + delay + 0.4);
-              
-              osc.start(t + delay);
-              osc.stop(t + delay + 0.4);
-          });
-
-        } else if (type === 'die') {
-           // Squelchy Organic Sound (FM Synthesis)
-           const carrier = ctx.createOscillator();
-           const modulator = ctx.createOscillator();
-           const modGain = ctx.createGain();
-           
-           modulator.connect(modGain);
-           modGain.connect(carrier.frequency);
-           carrier.connect(gain);
-           
-           carrier.type = 'sine';
-           carrier.frequency.setValueAtTime(200, t);
-           carrier.frequency.linearRampToValueAtTime(100, t + 0.4);
-           
-           modulator.type = 'sawtooth';
-           modulator.frequency.setValueAtTime(50, t); // Fast modulation
-           
-           modGain.gain.setValueAtTime(500, t); // Depth of modulation
-           modGain.gain.linearRampToValueAtTime(0, t + 0.4);
-           
-           gain.gain.setValueAtTime(0.2, t);
-           gain.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
-           
-           carrier.start(t);
-           modulator.start(t);
-           carrier.stop(t + 0.4);
-           modulator.stop(t + 0.4);
-
-        } else if (type === 'swish') {
-           // Airy Swoosh
-           const osc = ctx.createOscillator();
-           const g = ctx.createGain();
-           osc.connect(g);
-           g.connect(gain);
-           
-           osc.type = 'triangle';
-           osc.frequency.setValueAtTime(200, t);
-           osc.frequency.exponentialRampToValueAtTime(400, t + 0.15);
-           
-           g.gain.setValueAtTime(0, t);
-           g.gain.linearRampToValueAtTime(0.05, t + 0.05); // Fade in
-           g.gain.linearRampToValueAtTime(0, t + 0.15); // Fade out
-           
-           osc.start(t);
-           osc.stop(t + 0.15);
-        } else {
-          // Fail (Dissonant)
-          const osc = ctx.createOscillator();
-          const g = ctx.createGain();
-          osc.connect(g);
-          g.connect(gain);
-          
-          osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(150, t);
-          osc.frequency.linearRampToValueAtTime(100, t + 0.3);
-          
-          g.gain.setValueAtTime(0.1, t);
-          g.gain.linearRampToValueAtTime(0.001, t + 0.3);
-          
-          osc.start(t);
-          osc.stop(t + 0.3);
-        }
+    } else if (type === 'success') {
+         const osc = ctx.createOscillator();
+         osc.connect(gain);
+         osc.frequency.setValueAtTime(600, t);
+         osc.frequency.exponentialRampToValueAtTime(1000, t + 0.1);
+         gain.gain.setValueAtTime(0.1, t);
+         gain.gain.exponentialRampToValueAtTime(0.01, t + 0.2);
+         osc.start(t); osc.stop(t+0.2);
     }
+  };
   };
 
   const restartGame = () => {
