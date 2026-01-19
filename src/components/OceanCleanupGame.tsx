@@ -371,22 +371,25 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
   const playSound = (type: 'success' | 'fail' | 'splash' | 'die' | 'swish') => {
     if (!soundEnabled) return;
 
+    // Use Sound Effects from /public/sounds/ if possible
     const playAudioFile = (filename: string, volume: number = 0.5) => {
         const audio = new Audio(`/sounds/${filename}`);
         audio.volume = volume;
-        audio.play().catch(e => console.warn("Audio play error:", e));
+        audio.play().catch(e => {
+            console.warn("Audio play error:", e);
+        });
     };
 
     switch (type) {
         case 'splash':
-            playAudioFile('splash.wav', 0.6);
+            playAudioFile('splash.mp3', 0.6);
             break;
         case 'success':
-            playAudioFile('success.wav', 0.4);
+            playAudioFile('success.mp3', 0.4);
             break;
         case 'die':
         case 'fail':
-            playAudioFile('die.wav', 0.6);
+            playAudioFile('die.mp3', 0.6);
             break;
         case 'swish':
             // Optional: add a swish sound or leave silent
