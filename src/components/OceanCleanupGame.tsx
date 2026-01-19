@@ -440,35 +440,90 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
        playBubble(t + 0.25, 200);
 
     } else {
-        const osc = ctx.createOscillator();
-        osc.connect(gain);
-
+        const t = ctx.currentTime;
+        
         if (type === 'success') {
-          osc.frequency.setValueAtTime(600, ctx.currentTime);
-          osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
-          gain.gain.setValueAtTime(0.1, ctx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
-          osc.start(); osc.stop(ctx.currentTime + 0.2);
+          // Pleasant Chord Arpeggio (C Major: C, E, G)
+          [0, 0.05, 0.1].forEach((delay, i) => {
+              const osc = ctx.createOscillator();
+              const g = ctx.createGain();
+              osc.connect(g);
+              g.connect(gain);
+              
+              // Frequencies for C5, E5, G5
+              const freqs = [523.25, 659.25, 783.99];
+              
+              osc.type = 'sine';
+              osc.frequency.setValueAtTime(freqs[i], t + delay);
+              
+              g.gain.setValueAtTime(0.1, t + delay);
+              g.gain.exponentialRampToValueAtTime(0.01, t + delay + 0.4);
+              
+              osc.start(t + delay);
+              osc.stop(t + delay + 0.4);
+          });
+
         } else if (type === 'die') {
-           osc.type = 'sawtooth';
-           osc.frequency.setValueAtTime(150, ctx.currentTime);
-           osc.frequency.linearRampToValueAtTime(50, ctx.currentTime + 0.5);
-           gain.gain.setValueAtTime(0.1, ctx.currentTime);
-           gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-           osc.start(); osc.stop(ctx.currentTime + 0.5);
+           // Squelchy Organic Sound (FM Synthesis)
+           const carrier = ctx.createOscillator();
+           const modulator = ctx.createOscillator();
+           const modGain = ctx.createGain();
+           
+           modulator.connect(modGain);
+           modGain.connect(carrier.frequency);
+           carrier.connect(gain);
+           
+           carrier.type = 'sine';
+           carrier.frequency.setValueAtTime(200, t);
+           carrier.frequency.linearRampToValueAtTime(100, t + 0.4);
+           
+           modulator.type = 'sawtooth';
+           modulator.frequency.setValueAtTime(50, t); // Fast modulation
+           
+           modGain.gain.setValueAtTime(500, t); // Depth of modulation
+           modGain.gain.linearRampToValueAtTime(0, t + 0.4);
+           
+           gain.gain.setValueAtTime(0.2, t);
+           gain.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
+           
+           carrier.start(t);
+           modulator.start(t);
+           carrier.stop(t + 0.4);
+           modulator.stop(t + 0.4);
+
         } else if (type === 'swish') {
-           osc.frequency.setValueAtTime(400, ctx.currentTime);
-           osc.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.1);
-           gain.gain.setValueAtTime(0.05, ctx.currentTime);
-           gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-           osc.start(); osc.stop(ctx.currentTime + 0.1);
+           // Airy Swoosh
+           const osc = ctx.createOscillator();
+           const g = ctx.createGain();
+           osc.connect(g);
+           g.connect(gain);
+           
+           osc.type = 'triangle';
+           osc.frequency.setValueAtTime(200, t);
+           osc.frequency.exponentialRampToValueAtTime(400, t + 0.15);
+           
+           g.gain.setValueAtTime(0, t);
+           g.gain.linearRampToValueAtTime(0.05, t + 0.05); // Fade in
+           g.gain.linearRampToValueAtTime(0, t + 0.15); // Fade out
+           
+           osc.start(t);
+           osc.stop(t + 0.15);
         } else {
-          osc.frequency.setValueAtTime(300, ctx.currentTime);
-          osc.frequency.linearRampToValueAtTime(200, ctx.currentTime + 0.2);
+          // Fail (Dissonant)
+          const osc = ctx.createOscillator();
+          const g = ctx.createGain();
+          osc.connect(g);
+          g.connect(gain);
+          
           osc.type = 'sawtooth';
-          gain.gain.setValueAtTime(0.05, ctx.currentTime);
-          gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 0.2);
-          osc.start(); osc.stop(ctx.currentTime + 0.2);
+          osc.frequency.setValueAtTime(150, t);
+          osc.frequency.linearRampToValueAtTime(100, t + 0.3);
+          
+          g.gain.setValueAtTime(0.1, t);
+          g.gain.linearRampToValueAtTime(0.001, t + 0.3);
+          
+          osc.start(t);
+          osc.stop(t + 0.3);
         }
     }
   };
