@@ -63,6 +63,12 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
   const lastSpawnTime = useRef(0);
   const lastCreatureSpawnTime = useRef(0);
   const scoreRef = useRef(0); 
+  const creaturesRef = useRef<SeaCreature[]>([]);
+
+  // Keep creaturesRef in sync with state for access in game loop
+  useEffect(() => {
+    creaturesRef.current = creatures;
+  }, [creatures]); 
   const netPositionRef = useRef({ x: 0, y: 0 }); // Refs for loop access
   const splashIdCounter = useRef(0);
   const audioCtxRef = useRef<AudioContext | null>(null); // Persistent AudioContext
@@ -128,24 +134,22 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
       }, 500);
 
       // 2. Kill Random Creature
-      let creatureDied = false;
-      setCreatures(prev => {
-          const aliveOnes = prev.filter(c => c.status === 'alive');
-          if (aliveOnes.length === 0) return prev;
+      const aliveOnes = creaturesRef.current.filter(c => c.status === 'alive');
+      
+      if (aliveOnes.length > 0) {
+          playSound('die');
           
           const victimIndex = Math.floor(Math.random() * aliveOnes.length);
           const victimId = aliveOnes[victimIndex].id;
-          creatureDied = true;
           
-          return prev.map(c => {
+          setCreatures(prev => prev.map(c => {
              if (c.id === victimId) {
                  return { ...c, status: 'dying', icon: '💀' };
              }
              return c;
-          });
-      });
+          }));
+      }
 
-      if (creatureDied) playSound('die');
       playSound('splash');
   };
 
