@@ -65,6 +65,7 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
   const scoreRef = useRef(0); 
   const netPositionRef = useRef({ x: 0, y: 0 }); // Refs for loop access
   const splashIdCounter = useRef(0);
+  const audioCtxRef = useRef<AudioContext | null>(null); // Persistent AudioContext
 
   // Mouse movement handler
   const handleMouseMove = (e: React.MouseEvent) => {
@@ -299,47 +300,78 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
 
   const playSound = (type: 'success' | 'fail' | 'splash' | 'die' | 'swish') => {
     if (!soundEnabled) return;
-    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const osc = ctx.createOscillator();
+
+    if (!audioCtxRef.current) {
+      audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+    }
+    const ctx = audioCtxRef.current;
+
+    // Resume context if suspended (browser autoplay policy)
+    if (ctx.state === 'suspended') {
+      ctx.resume();
+    }
+    
     const gain = ctx.createGain();
-    osc.connect(gain);
     gain.connect(ctx.destination);
     
-    if (type === 'success') {
-      osc.frequency.setValueAtTime(600, ctx.currentTime);
-      osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
-      gain.gain.setValueAtTime(0.05, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
-      osc.start(); osc.stop(ctx.currentTime + 0.2);
-    } else if (type === 'splash') {
-       // Noise-like sound for splash
-       osc.type = 'triangle';
-       osc.frequency.setValueAtTime(100, ctx.currentTime);
-       osc.frequency.linearRampToValueAtTime(50, ctx.currentTime + 0.3);
-       gain.gain.setValueAtTime(0.1, ctx.currentTime);
-       gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-       osc.start(); osc.stop(ctx.currentTime + 0.3);
-    } else if (type === 'die') {
-       osc.type = 'sawtooth';
-       osc.frequency.setValueAtTime(150, ctx.currentTime);
-       osc.frequency.linearRampToValueAtTime(50, ctx.currentTime + 0.5);
-       gain.gain.setValueAtTime(0.08, ctx.currentTime);
-       gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-       osc.start(); osc.stop(ctx.currentTime + 0.5);
-    } else if (type === 'swish') {
-       // Quick swoosh
-       osc.frequency.setValueAtTime(400, ctx.currentTime);
-       osc.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.1);
-       gain.gain.setValueAtTime(0.03, ctx.currentTime);
-       gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 0.1);
-       osc.start(); osc.stop(ctx.currentTime + 0.1);
+    if (type === 'splash') {
+       // White noise for splash
+       const bufferSize = ctx.sampleRate * 0.5; // 0.5 seconds
+       const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
+       const data = buffer.getChannelData(0);
+       for (let i = 0; i < bufferSize; i++) {
+         data[i] = (Math.random() * 2 - 1) * 0.5; // White noise
+       }
+       
+       const noise = ctx.createBufferSource();
+       noise.buffer = buffer;
+       
+       // Filter for "watery" sound
+       const filter = ctx.createBiquadFilter();
+       filter.type = 'lowpass';
+       filter.frequency.setValueAtTime(1000, ctx.currentTime);
+       filter.frequency.linearRampToValueAtTime(100, ctx.currentTime + 0.3);
+       
+       noise.connect(filter);
+       filter.connect(gain);
+       
+       gain.gain.setValueAtTime(0.8, ctx.currentTime); // Louder
+       gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+       
+       noise.start();
     } else {
-      osc.frequency.setValueAtTime(300, ctx.currentTime);
-      osc.frequency.linearRampToValueAtTime(200, ctx.currentTime + 0.2);
-      osc.type = 'sawtooth';
-      gain.gain.setValueAtTime(0.05, ctx.currentTime);
-      gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 0.2);
-      osc.start(); osc.stop(ctx.currentTime + 0.2);
+        // Oscillator based sounds
+        const osc = ctx.createOscillator();
+        osc.connect(gain);
+
+        if (type === 'success') {
+          osc.frequency.setValueAtTime(600, ctx.currentTime);
+          osc.frequency.exponentialRampToValueAtTime(1200, ctx.currentTime + 0.1);
+          gain.gain.setValueAtTime(0.1, ctx.currentTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+          osc.start(); osc.stop(ctx.currentTime + 0.2);
+        } else if (type === 'die') {
+           osc.type = 'sawtooth';
+           osc.frequency.setValueAtTime(150, ctx.currentTime);
+           osc.frequency.linearRampToValueAtTime(50, ctx.currentTime + 0.5);
+           gain.gain.setValueAtTime(0.1, ctx.currentTime);
+           gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+           osc.start(); osc.stop(ctx.currentTime + 0.5);
+        } else if (type === 'swish') {
+           osc.frequency.setValueAtTime(400, ctx.currentTime);
+           osc.frequency.exponentialRampToValueAtTime(200, ctx.currentTime + 0.1);
+           gain.gain.setValueAtTime(0.05, ctx.currentTime);
+           gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 0.1);
+           osc.start(); osc.stop(ctx.currentTime + 0.1);
+        } else {
+          // Fail
+          osc.frequency.setValueAtTime(300, ctx.currentTime);
+          osc.frequency.linearRampToValueAtTime(200, ctx.currentTime + 0.2);
+          osc.type = 'sawtooth';
+          gain.gain.setValueAtTime(0.05, ctx.currentTime);
+          gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+          osc.start(); osc.stop(ctx.currentTime + 0.2);
+        }
     }
   };
 
@@ -367,10 +399,7 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
               Beenden
             </button>
             <button
-              onClick={() => {
-                restartGame();
-                onGameComplete(score);
-              }}
+              onClick={restartGame}
               className="bg-blue-600 hover:bg-blue-700 text-white text-xl font-bold py-3 px-10 rounded-xl shadow-lg transform transition hover:scale-105"
             >
               Nochmal Retten 🌊
