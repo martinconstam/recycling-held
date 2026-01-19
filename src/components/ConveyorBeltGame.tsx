@@ -33,7 +33,7 @@ const WASTE_TYPES: WasteType[] = [
   { type: 'plastic', icon: '🥡', name: 'Plastikbox' },
   { type: 'plastic', icon: '🧃', name: 'Saftkarton' },
   { type: 'plastic', icon: '🦷', name: 'Zahnbürste' },
-  { type: 'plastic', icon: '🍓', name: 'Obstschale' },
+  // { type: 'plastic', icon: '🍓', name: 'Obstschale' }, // REMOVED - Visual confusion
 
   // Glas
   { type: 'glass', icon: '🍷', name: 'Weinflasche' },
@@ -42,11 +42,12 @@ const WASTE_TYPES: WasteType[] = [
   { type: 'glass', icon: '🍾', name: 'Sektflasche' },
   { type: 'glass', icon: '🏺', name: 'Parfumflakon' },
 
-  // Metall (in Rest/Wertstoff)
+  // Metall
   { type: 'metal', icon: '🥫', name: 'Konservendose' },
   { type: 'metal', icon: '🥄', name: 'Alter Löffel' },
   { type: 'metal', icon: '🗝️', name: 'Schlüssel' },
   { type: 'metal', icon: '📎', name: 'Büroklammer' },
+  { type: 'metal', icon: '🥤', name: 'Getränkedose' }, 
 
   // Bio / Organisch
   { type: 'organic', icon: '🍎', name: 'Apfelrest' },
@@ -55,13 +56,15 @@ const WASTE_TYPES: WasteType[] = [
   { type: 'organic', icon: '🥚', name: 'Eierschale' },
   { type: 'organic', icon: '🥀', name: 'Blumenreste' },
   { type: 'organic', icon: '🦴', name: 'Knochen' },
+  { type: 'organic', icon: '🍓', name: 'Erdbeere' }, // Reclassified as Organic
 ];
 
 const BINS: BinConfig[] = [
   { id: 'paper', name: 'Papier', icon: '🟦', color: 'border-blue-500', bgGradient: 'from-blue-100 to-blue-200', accepts: ['paper'] },
   { id: 'plastic', name: 'Plastik', icon: '🟨', color: 'border-yellow-500', bgGradient: 'from-yellow-100 to-yellow-200', accepts: ['plastic'] },
   { id: 'glass', name: 'Glas', icon: '🟩', color: 'border-green-500', bgGradient: 'from-green-100 to-green-200', accepts: ['glass'] },
-  { id: 'organic', name: 'Bio / Rest', icon: '🟫', color: 'border-amber-600', bgGradient: 'from-amber-100 to-amber-200', accepts: ['organic', 'metal'] },
+  { id: 'metal', name: 'Metall', icon: '⚙️', color: 'border-gray-500', bgGradient: 'from-gray-200 to-gray-300', accepts: ['metal'] },
+  { id: 'organic', name: 'Bio', icon: '🟫', color: 'border-amber-600', bgGradient: 'from-amber-100 to-amber-200', accepts: ['organic'] },
 ];
 
 interface GameItem {
