@@ -379,23 +379,91 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
         ref={gameContainerRef}
         onMouseMove={handleMouseMove}
         onMouseDown={handleMouseDown}
-        className="relative flex-grow w-full bg-gradient-to-b from-sky-200 via-blue-400 to-indigo-900 rounded-3xl overflow-hidden shadow-inner cursor-none border-4 border-white/50"
+        className="relative flex-grow w-full bg-gradient-to-b from-sky-300 via-blue-500 to-indigo-900 rounded-3xl overflow-hidden shadow-inner cursor-none border-4 border-white/50 z-0"
       >
-          {/* Background Elements */}
-          <div className="absolute inset-0 opacity-30 pointer-events-none">
+          {/* --- Waves at Surface --- */}
+          <div className="absolute top-[40px] left-0 right-0 h-16 z-0 opacity-50">
+             <motion.div 
+               animate={{ x: ["-20%", "0%"] }}
+               transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+               className="flex w-[150%] h-full"
+             >
+                <img src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNDQwIDMyMCI+PHBhdGggZmlsbD0iI2ZmZiIgZmlsbC1vcGFjaXR5PSIwLjMiIGQ9Ik0wLDE2MEw0OCwxNTAuN0M5NiwxNDEsMTkyLDEyMywyODgsMTIyLjdDMzg0LDEyMyw0ODAsMTM5LDU3NiwxNDkuM0M2NzIsMTYwLDc2OCwxNjUsODY0LDE1NC43Qzk2MCwxNDQsMTA1NiwxMTcsMTE1MiwxMDYuN0MxMjQ4LDk2LDEzNDQsMTAxLDEzOTIsMTA0TD…hZ2Ugc291cmNlIGlzIHRvbyBsb25nLCB1c2luZyBzaW1wbGUgQ1NTIHdhdmUgb3IgcGF0aCBpbnN0ZWFk" className="hidden" />
+                {/* Fallback to CSS/SVG inline for cleaner code */}
+                <div className="w-full h-full" style={{ 
+                    backgroundImage: 'radial-gradient(circle at 20px 0, rgba(255,255,255,0.4) 20px, transparent 21px)', 
+                    backgroundSize: '40px 40px',
+                    backgroundRepeat: 'repeat-x',
+                    height: '20px'
+                }}></div>
+             </motion.div>
+          </div>
+          {/* Proper SVG Wave */}
+          <div className="absolute top-[45px] left-0 w-full overflow-hidden h-12 z-0">
+             <motion.div 
+               className="flex w-[200%]"
+               animate={{ x: ["-50%", "0%"] }}
+               transition={{ duration: 8, repeat: Infinity, ease: "linear" }}
+             >
+               {[0, 1].map(i => (
+                 <svg key={i} className="w-1/2 h-full text-white/20 fill-current" viewBox="0 0 1200 120" preserveAspectRatio="none">
+                    <path d="M321.39,56.44c58-10.79,114.16-30.13,172-41.86,82.39-16.72,168.19-17.73,250.45-.39C823.78,31,906.67,72,985.66,92.83c70.05,18.48,146.53,26.09,214.34,3V0H0V27.35A600.21,600.21,0,0,0,321.39,56.44Z" />
+                 </svg>
+               ))}
+             </motion.div>
+          </div>
+          <div className="absolute top-[50px] left-0 w-full h-[2px] bg-white/20 blur-[1px]"></div>
+
+
+          {/* --- Background Bubbles --- */}
+          <div className="absolute inset-0 opacity-30 pointer-events-none z-0">
                {[...Array(20)].map((_, i) => (
-                   <div 
+                   <motion.div 
                     key={i} 
-                    className="absolute bg-white rounded-full animate-pulse"
+                    className="absolute bg-white/40 rounded-full"
+                    animate={{ 
+                        y: [0, -100], 
+                        opacity: [0, 0.8, 0] 
+                    }}
+                    transition={{ 
+                        duration: 5 + Math.random() * 10, 
+                        repeat: Infinity, 
+                        delay: Math.random() * 5,
+                        ease: "linear"
+                    }}
                     style={{
                         left: `${Math.random() * 100}%`,
                         top: `${Math.random() * 100}%`,
-                        width: Math.random() * 10 + 2 + 'px',
-                        height: Math.random() * 10 + 2 + 'px',
-                        opacity: Math.random() * 0.5
+                        width: Math.random() * 8 + 4 + 'px',
+                        height: Math.random() * 8 + 4 + 'px',
                     }} 
                    />
                ))}
+          </div>
+
+          {/* --- Sand Floor & Plants --- */}
+          <div className="absolute bottom-0 w-full h-32 z-10">
+               {/* Sand Gradient */}
+               <div className="absolute inset-0 bg-gradient-to-t from-[#E6D5AC] to-[#F4E4BC] border-t-8 border-[#D4C39C]/50 rounded-t-[50px] transform scale-110 translate-y-4"></div>
+               {/* Sand Texture */}
+               <div className="absolute inset-0 opacity-20" style={{ backgroundImage: 'radial-gradient(#8B4513 1px, transparent 1px)', backgroundSize: '16px 16px' }}></div>
+               
+               {/* Plants */}
+               <div className="absolute bottom-4 left-0 w-full flex justify-around px-8 items-end pointer-events-none">
+                   {[...Array(6)].map((_, i) => (
+                       <motion.div 
+                         key={i}
+                         animate={{ rotate: [0, 5, 0, -5, 0] }}
+                         transition={{ duration: 3 + Math.random() * 2, repeat: Infinity, ease: 'easeInOut', delay: i * 0.5 }}
+                         className="origin-bottom filter brightness-90"
+                         style={{ transform: `scale(${0.8 + Math.random() * 0.5})` }}
+                       >
+                           <span className="text-5xl drop-shadow-md">
+                               {['🌿', '🪸', '🎍', '🌾'][i % 4]}
+                           </span>
+                       </motion.div>
+                   ))}
+               </div>
           </div>
 
           {/* Sea Creatures */}
@@ -411,7 +479,7 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
                         }}
                         exit={{ opacity: 0 }}
                         transition={{ duration: creature.status === 'dying' ? 1 : 0.5 }}
-                        className="absolute text-5xl pointer-events-none transition-transform duration-200"
+                        className="absolute text-5xl pointer-events-none transition-transform duration-200 z-10"
                         style={{
                             left: creature.x,
                             top: creature.y,
@@ -424,11 +492,12 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
                 ))}
             </AnimatePresence>
 
+
           {/* Trash Items */}
           {trashItems.map(item => (
               <div 
                 key={item.id}
-                className="absolute text-4xl filter drop-shadow-lg"
+                className="absolute text-4xl filter drop-shadow-lg z-20"
                 style={{
                     left: item.x,
                     top: item.y,
@@ -443,7 +512,7 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
           {splashes.map(splash => (
                <div
                 key={splash.id}
-                className="absolute w-20 h-20 bg-blue-200 rounded-full opacity-0 pointer-events-none animate-ping"
+                className="absolute w-20 h-20 bg-blue-200 rounded-full opacity-0 pointer-events-none animate-ping z-30"
                 style={{ left: splash.x - 40, top: splash.y - 40 }}
                ></div>
           ))}
@@ -469,12 +538,9 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
              <div className="absolute top-full left-1/2 w-2 h-20 bg-amber-700 -translate-x-1/2 rounded-full shadow-lg origin-top transform -rotate-12"></div>
           </div>
 
-          {/* Water Surface Line */}
-          <div className="absolute top-10 left-0 right-0 h-1 bg-white/30 blur-sm"></div>
-
           {/* Tutorial Text */}
           {score === 0 && (
-             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white/80 font-bold text-2xl text-center pointer-events-none">
+             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-white/80 font-bold text-2xl text-center pointer-events-none z-50 drop-shadow-md">
                  Bewege die Maus um das Netz zu steuern!<br/>
                  Klicke um Müll zu fangen!
              </div>
