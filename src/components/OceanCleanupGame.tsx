@@ -72,6 +72,31 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
   const netPositionRef = useRef({ x: 0, y: 0 }); // Refs for loop access
   const splashIdCounter = useRef(0);
   const audioCtxRef = useRef<AudioContext | null>(null); // Persistent AudioContext
+  const bgMusicRef = useRef<HTMLAudioElement | null>(null);
+
+  // Background Music
+  useEffect(() => {
+      bgMusicRef.current = new Audio('/sounds/liquid-on-air.mp3');
+      bgMusicRef.current.loop = true;
+      bgMusicRef.current.volume = 0.3; // Gentle background volume
+
+      return () => {
+          if (bgMusicRef.current) {
+              bgMusicRef.current.pause();
+              bgMusicRef.current = null;
+          }
+      };
+  }, []);
+
+  useEffect(() => {
+      if (bgMusicRef.current) {
+          if (isPlaying && soundEnabled) {
+              bgMusicRef.current.play().catch(e => console.warn("Bg music play error:", e));
+          } else {
+              bgMusicRef.current.pause();
+          }
+      }
+  }, [isPlaying, soundEnabled]);
 
   // Mouse movement handler
   const handleMouseMove = (e: React.MouseEvent) => {
