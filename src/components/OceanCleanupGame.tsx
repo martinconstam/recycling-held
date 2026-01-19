@@ -1,3 +1,7 @@
+import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { Heart, Trophy, RotateCcw, Volume2, VolumeX } from 'lucide-react';
+
 interface TrashItem {
   id: number;
   x: number;
