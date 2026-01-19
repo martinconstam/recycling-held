@@ -103,18 +103,10 @@ function App() {
     <div className="min-h-screen bg-gray-50 font-sans text-gray-800">
       
       {/* 1. Header & Navigation */}
-      <Header profileName={profile?.username} />
+      {/* 1. Header & Navigation */}
+      <Header profile={profile} />
       
-      {/* 2. User Dashboard (Sticky) */}
-      {profile && (
-        <div className="bg-white/80 backdrop-blur-md sticky top-16 z-40 border-b border-gray-100 shadow-sm transition-all duration-300">
-          <div className="container mx-auto px-4 py-3">
-             <PlayerProfile profile={profile} />
-          </div>
-        </div>
-      )}
-
-      {/* 3. Hero Introduction */}
+      {/* 2. Hero Introduction (previously sticky dashboard removed) */}
       <main>
         <HeroSection onStart={handleStart} />
 
