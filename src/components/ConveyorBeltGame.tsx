@@ -337,7 +337,6 @@ export default function ConveyorBeltGame({ onGameComplete, onAddPoints }: Convey
            <button onClick={restartGame} className="p-2 rounded-full hover:bg-gray-100 text-gray-500" title="Neustart">
              <RotateCcw />
            </button>
-           })}
         </div>
         
         {/* Game Over Overlay */}
