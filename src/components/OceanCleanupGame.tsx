@@ -161,14 +161,14 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
       if (!lastCreatureSpawnTime.current) lastCreatureSpawnTime.current = timestamp;
 
       const containerHeight = 600;
-      const spawnInterval = Math.max(500, 2000 - scoreRef.current * 20);
+      // Difficulty: Spawns faster and drops faster
+      const spawnInterval = Math.max(400, 2000 - scoreRef.current * 40); 
 
       // Spawn Trash
       if (timestamp - lastSpawnTime.current > spawnInterval) {
         const randomType = TRASH_TYPES[Math.floor(Math.random() * TRASH_TYPES.length)];
         const width = ubGameContainerWidth();
-        const padding = 60; // Safe zone for sway
-        // Ensure startX is well within bounds so sine wave (+/- 20px) doesn't go out
+        const padding = 60; 
         const startX = padding + Math.random() * (width - 2 * padding);
         
         const newTrash: TrashItem = {
@@ -184,6 +184,46 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
         setTrashItems(prev => [...prev, newTrash]);
         lastSpawnTime.current = timestamp;
       }
+
+      // ... (Creatures remain same)
+
+      // Update Trash Positions
+      setTrashItems(prev => {
+        const nextItems: TrashItem[] = [];
+        let hitBottom = false;
+        let hitX = 0;
+        const waterLevel = 50; 
+
+        prev.forEach(item => {
+          // Difficulty: Fall speed increases faster (0.1 multiplier)
+          const newY = item.y + (3 + scoreRef.current * 0.1); 
+          
+          const waveAmplitude = 20; 
+          const waveFrequency = 0.02;
+// ... (rest of logic) ...
+// ...
+             {/* Plants - Gentle Sway */}
+               <div className="absolute bottom-0 left-0 w-full h-32 flex justify-around px-8 items-end pointer-events-none z-20">
+                   {[...Array(6)].map((_, i) => (
+                       <motion.div 
+                         key={i}
+                         animate={{ rotate: [0, 5, 0, -5, 0] }}
+                         transition={{ 
+                             duration: 3 + Math.random() * 2, // ~4 seconds cycle (faster)
+                             repeat: Infinity, 
+                             ease: 'easeInOut', 
+                             delay: i * 0.5 
+                         }}
+                         className="origin-bottom filter brightness-90"
+                         style={{ transform: `scale(${0.8 + Math.random() * 0.5})` }}
+                       >
+                           <span className="text-5xl drop-shadow-md">
+                               {['🌿', '🪸', '🎍', '🌾'][i % 4]}
+                           </span>
+                       </motion.div>
+                   ))}
+               </div>
+          </div>
 
       // Spawn Creatures
        if (timestamp - lastCreatureSpawnTime.current > 3000) {
@@ -309,42 +349,55 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
       audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
     }
     const ctx = audioCtxRef.current;
-
-    // Resume context if suspended (browser autoplay policy)
-    if (ctx.state === 'suspended') {
-      ctx.resume();
-    }
+    if (ctx.state === 'suspended') ctx.resume();
     
     const gain = ctx.createGain();
     gain.connect(ctx.destination);
     
     if (type === 'splash') {
-       // White noise for splash
-       const bufferSize = ctx.sampleRate * 0.5; // 0.5 seconds
+       const t = ctx.currentTime;
+       
+       // 1. Impact "Thud" (Low Sine Drop)
+       const osc = ctx.createOscillator();
+       const oscGain = ctx.createGain();
+       osc.connect(oscGain);
+       oscGain.connect(gain);
+       
+       osc.frequency.setValueAtTime(150, t);
+       osc.frequency.exponentialRampToValueAtTime(50, t + 0.1);
+       oscGain.gain.setValueAtTime(0.5, t);
+       oscGain.gain.exponentialRampToValueAtTime(0.01, t + 0.1);
+       osc.start(t);
+       osc.stop(t + 0.1);
+
+       // 2. Spray "Wishhh" (Filtered Noise)
+       const bufferSize = ctx.sampleRate * 0.5;
        const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
        const data = buffer.getChannelData(0);
        for (let i = 0; i < bufferSize; i++) {
-         data[i] = (Math.random() * 2 - 1) * 0.5; // White noise
+         data[i] = (Math.random() * 2 - 1); 
        }
-       
        const noise = ctx.createBufferSource();
        noise.buffer = buffer;
        
-       // Filter for "watery" sound
-       const filter = ctx.createBiquadFilter();
-       filter.type = 'lowpass';
-       filter.frequency.setValueAtTime(1000, ctx.currentTime);
-       filter.frequency.linearRampToValueAtTime(100, ctx.currentTime + 0.3);
+       const noiseFilter = ctx.createBiquadFilter();
+       noiseFilter.type = 'lowpass';
+       noiseFilter.frequency.setValueAtTime(800, t);
+       noiseFilter.frequency.linearRampToValueAtTime(100, t + 0.4);
        
-       noise.connect(filter);
-       filter.connect(gain);
+       const noiseGain = ctx.createGain();
        
-       gain.gain.setValueAtTime(0.8, ctx.currentTime); // Louder
-       gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+       noise.connect(noiseFilter);
+       noiseFilter.connect(noiseGain);
+       noiseGain.connect(gain);
        
-       noise.start();
+       noiseGain.gain.setValueAtTime(0.8, t);
+       noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 0.4);
+       
+       noise.start(t);
+       noise.stop(t + 0.4);
+
     } else {
-        // Oscillator based sounds
         const osc = ctx.createOscillator();
         osc.connect(gain);
 
@@ -368,7 +421,6 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
            gain.gain.linearRampToValueAtTime(0.001, ctx.currentTime + 0.1);
            osc.start(); osc.stop(ctx.currentTime + 0.1);
         } else {
-          // Fail
           osc.frequency.setValueAtTime(300, ctx.currentTime);
           osc.frequency.linearRampToValueAtTime(200, ctx.currentTime + 0.2);
           osc.type = 'sawtooth';
