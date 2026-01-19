@@ -127,6 +127,31 @@ export default function ConveyorBeltGame({ onGameComplete, onAddPoints }: Convey
   const itemIdCounter = useRef(0);
   const beltRef = useRef<HTMLDivElement>(null);
   const spawnTimer = useRef<ReturnType<typeof setInterval>>();
+  const bgMusicRef = useRef<HTMLAudioElement | null>(null);
+
+  // Background Music
+  useEffect(() => {
+    bgMusicRef.current = new Audio('/sounds/chiptune-serpent.mp3');
+    bgMusicRef.current.loop = true;
+    bgMusicRef.current.volume = 0.3;
+
+    return () => {
+      if (bgMusicRef.current) {
+        bgMusicRef.current.pause();
+        bgMusicRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (bgMusicRef.current) {
+      if ((isPlaying || hearts <= 0) && soundEnabled) {
+         bgMusicRef.current.play().catch(e => console.warn("Bg music play error:", e));
+      } else {
+         bgMusicRef.current.pause();
+      }
+    }
+  }, [isPlaying, hearts, soundEnabled]);
 
   // Game Loop and Spawning
   useEffect(() => {
@@ -285,30 +310,8 @@ export default function ConveyorBeltGame({ onGameComplete, onAddPoints }: Convey
     setIsPlaying(true);
   };
 
-  if (!isPlaying && hearts <= 0) {
-    return (
-      <div className="flex flex-col items-center justify-center p-10 bg-white rounded-3xl shadow-xl max-w-2xl mx-auto mt-10">
-        <Trophy className="w-20 h-20 text-yellow-500 mb-6" />
-        <h2 className="text-4xl font-bold text-gray-800 mb-2">Spiel Vorbei!</h2>
-        <p className="text-xl text-gray-500 mb-6">Du hast {score} Punkte erreicht.</p>
-        <button
-          onClick={() => {
-            restartGame();
-            onGameComplete(score);
-          }}
-          className="bg-green-600 hover:bg-green-700 text-white text-xl font-bold py-4 px-10 rounded-full shadow-lg transform transition hover:scale-105"
-        >
-          Zurück zum Menü
-        </button>
-        <button
-          onClick={restartGame}
-          className="mt-4 text-green-600 font-bold hover:underline"
-        >
-          Nochmal spielen 🔄
-        </button>
-      </div>
-    );
-  }
+  // Removed early return for Game Over to show overlay instead
+  // if (!isPlaying && hearts <= 0) { ... }
 
   return (
     <div className="relative w-full max-w-6xl mx-auto p-4 select-none">
@@ -334,7 +337,33 @@ export default function ConveyorBeltGame({ onGameComplete, onAddPoints }: Convey
            <button onClick={restartGame} className="p-2 rounded-full hover:bg-gray-100 text-gray-500" title="Neustart">
              <RotateCcw />
            </button>
+           })}
         </div>
+        
+        {/* Game Over Overlay */}
+        {!isPlaying && hearts <= 0 && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-500 cursor-default">
+             <div className="flex flex-col items-center justify-center p-10 bg-white/95 backdrop-blur-md rounded-3xl shadow-2xl max-w-xl mx-auto border-4 border-gray-800">
+                <Trophy className="w-20 h-20 text-yellow-500 mb-4" />
+                <h2 className="text-4xl font-black text-gray-900 mb-2">Spiel Vorbei!</h2>
+                <p className="text-xl text-gray-600 mb-8">Score: {score}</p>
+                <div className="flex flex-col gap-3 w-full">
+                    <button
+                      onClick={restartGame}
+                      className="bg-green-600 hover:bg-green-700 text-white text-xl font-bold py-3 px-8 rounded-xl shadow-lg transform transition hover:scale-105 w-full flex justify-center items-center gap-2"
+                    >
+                      <span>Nochmal Sortieren</span> 🔄
+                    </button>
+                    <button
+                       onClick={() => onGameComplete(score)}
+                       className="px-8 py-3 rounded-xl border-2 border-gray-300 font-bold text-gray-500 hover:bg-gray-100 transition w-full"
+                    >
+                       Menü
+                    </button>
+                </div>
+             </div>
+          </div>
+        )}
       </div>
 
       <div className="relative bg-gray-100 rounded-3xl border-4 border-gray-300 overflow-hidden h-[500px] shadow-inner mb-6" ref={beltRef}>
