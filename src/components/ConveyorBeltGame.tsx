@@ -1,464 +1,394 @@
-import { useState, useEffect, useRef } from 'react';
-import { Trash2, RotateCcw, Volume2, VolumeX } from 'lucide-react';
+import { useState, useEffect, useRef, useMemo } from 'react';
+import { motion, AnimatePresence, PanInfo } from 'framer-motion';
+import { Trash2, RotateCcw, Volume2, VolumeX, Heart, Trophy } from 'lucide-react';
 
-interface Waste {
-  id: number;
+// --- Types & Constants ---
+interface WasteType {
   type: string;
   icon: string;
-  correctBin: string;
-  position: number;
-  falling: boolean;
-  binColor?: string;
+  name: string;
 }
 
-interface BinItem {
+interface BinConfig {
+  id: string;
   name: string;
   icon: string;
   color: string;
+  bgGradient: string;
   accepts: string[];
 }
 
-const WASTE_ITEMS = [
-  { type: 'paper', icon: '📰', name: 'Papier', correctBin: 'blue' },
-  { type: 'plastic', icon: '🍾', name: 'Plastik', correctBin: 'yellow' },
-  { type: 'glass', icon: '🥫', name: 'Glas', correctBin: 'green' },
-  { type: 'metal', icon: '🥫', name: 'Metall', correctBin: 'gray' },
-  { type: 'organic', icon: '🍎', name: 'Bio', correctBin: 'brown' },
-  { type: 'electronics', icon: '📱', name: 'Elektronik', correctBin: 'red' },
+const WASTE_TYPES: WasteType[] = [
+  { type: 'paper', icon: '📰', name: 'Alte Zeitung' },
+  { type: 'paper', icon: '📦', name: 'Karton' },
+  { type: 'paper', icon: '📝', name: 'Papierblatt' },
+  { type: 'plastic', icon: '🥤', name: 'Plastikbecher' },
+  { type: 'plastic', icon: '🧴', name: 'Shampooflasche' },
+  { type: 'plastic', icon: '🥡', name: 'Plastikbox' },
+  { type: 'glass', icon: '🍷', name: 'Weinflasche' },
+  { type: 'glass', icon: '🫙', name: 'Gurkenglas' },
+  { type: 'glass', icon: '🥛', name: 'Milchflasche' },
+  { type: 'metal', icon: '🥫', name: 'Konserve' },
+  { type: 'metal', icon: '🥤', name: 'Cola Dose' },
+  { type: 'organic', icon: '🍎', name: 'Apfelrest' },
+  { type: 'organic', icon: '🍌', name: 'Banane' },
+  { type: 'organic', icon: '🍂', name: 'Laub' },
 ];
 
-const BINS: Record<string, BinItem> = {
-  blue: {
-    name: 'Papier',
-    icon: '📰',
-    color: 'from-blue-400 to-blue-600',
-    accepts: ['paper'],
-  },
-  yellow: {
-    name: 'Plastik',
-    icon: '🍾',
-    color: 'from-yellow-400 to-yellow-600',
-    accepts: ['plastic'],
-  },
-  green: {
-    name: 'Glas',
-    icon: '🥫',
-    color: 'from-green-400 to-green-600',
-    accepts: ['glass'],
-  },
-  gray: {
-    name: 'Metall',
-    icon: '🔩',
-    color: 'from-gray-400 to-gray-600',
-    accepts: ['metal'],
-  },
-  brown: {
-    name: 'Bio',
-    icon: '🌱',
-    color: 'from-amber-600 to-amber-800',
-    accepts: ['organic'],
-  },
-  red: {
-    name: 'Elektronik',
-    icon: '📱',
-    color: 'from-red-500 to-red-700',
-    accepts: ['electronics'],
-  },
-};
+const BINS: BinConfig[] = [
+  { id: 'paper', name: 'Papier', icon: '🟦', color: 'border-blue-500', bgGradient: 'from-blue-100 to-blue-200', accepts: ['paper'] },
+  { id: 'plastic', name: 'Plastik', icon: '🟨', color: 'border-yellow-500', bgGradient: 'from-yellow-100 to-yellow-200', accepts: ['plastic'] },
+  { id: 'glass', name: 'Glas', icon: '🟩', color: 'border-green-500', bgGradient: 'from-green-100 to-green-200', accepts: ['glass'] },
+  { id: 'organic', name: 'Bio / Rest', icon: '🟫', color: 'border-amber-600', bgGradient: 'from-amber-100 to-amber-200', accepts: ['organic', 'metal'] }, // Simplification for game flow
+];
 
-const BIN_COLORS = {
-  blue: '#3B82F6',
-  yellow: '#FBBF24',
-  green: '#10B981',
-  gray: '#9CA3AF',
-  brown: '#92400E',
-  red: '#EF4444',
-};
+interface GameItem {
+  id: number;
+  data: WasteType;
+  lane: number; // For visual variety (y-offset)
+}
 
 interface ConveyorBeltGameProps {
   onGameComplete: (finalScore: number) => void;
   onAddPoints: (points: number) => void;
 }
 
-export default function ConveyorBeltGame({
-  onGameComplete,
-  onAddPoints,
-}: ConveyorBeltGameProps) {
+export default function ConveyorBeltGame({ onGameComplete, onAddPoints }: ConveyorBeltGameProps) {
+  // Game State
+  const [isPlaying, setIsPlaying] = useState(true);
   const [score, setScore] = useState(0);
-  const [combo, setCombo] = useState(0);
-  const [wasteItems, setWasteItems] = useState<Waste[]>([]);
-  const [gameActive, setGameActive] = useState(true);
   const [hearts, setHearts] = useState(3);
-  const [selectedBin, setSelectedBin] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<{
-    message: string;
-    type: 'correct' | 'wrong';
-    x: number;
-    y: number;
-  } | null>(null);
+  const [items, setItems] = useState<GameItem[]>([]);
+  const [speed, setSpeed] = useState(5); // Seconds to cross screen
+  const [spawnRate, setSpawnRate] = useState(2500); // ms
+  const [feedback, setFeedback] = useState<{ id: number; text: string; type: 'good' | 'bad'; x: number; y: number } | null>(null);
   const [soundEnabled, setSoundEnabled] = useState(true);
-  const [scannedWaste, setScannedWaste] = useState<string | null>(null);
-  const wasteIdRef = useRef(0);
+
+  // Refs for collision detection
+  const binRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  const itemIdCounter = useRef(0);
+  const beltRef = useRef<HTMLDivElement>(null);
+  const spawnTimer = useRef<number>();
 
   useEffect(() => {
-    if (!gameActive || hearts <= 0) {
-      setGameActive(false);
+    // Game Loop
+    if (!isPlaying) {
+      clearInterval(spawnTimer.current);
       return;
     }
-  }, [gameActive, hearts]);
 
-  useEffect(() => {
-    if (!gameActive) return;
-
-    const spawnInterval = setInterval(() => {
-      const newWaste: Waste = {
-        id: wasteIdRef.current++,
-        type: WASTE_ITEMS[Math.floor(Math.random() * WASTE_ITEMS.length)].type,
-        icon: WASTE_ITEMS.find(
-          (w) =>
-            w.type ===
-            WASTE_ITEMS[Math.floor(Math.random() * WASTE_ITEMS.length)].type
-        )?.icon!,
-        correctBin: WASTE_ITEMS.find(
-          (w) =>
-            w.type ===
-            WASTE_ITEMS[Math.floor(Math.random() * WASTE_ITEMS.length)].type
-        )?.correctBin!,
-        position: Math.random() * 80,
-        falling: false,
+    // Spawn items
+    const spawnItem = () => {
+      const randomWaste = WASTE_TYPES[Math.floor(Math.random() * WASTE_TYPES.length)];
+      itemIdCounter.current += 1;
+      
+      const newItem: GameItem = {
+        id: itemIdCounter.current,
+        data: randomWaste,
+        lane: Math.random() * 40 - 20, // Random Y offset on belt
       };
-      setWasteItems((prev) => [...prev, newWaste]);
-    }, 1500);
 
-    return () => clearInterval(spawnInterval);
-  }, [gameActive]);
+      setItems(prev => [...prev, newItem]);
+    };
 
+    spawnTimer.current = setInterval(spawnItem, spawnRate);
+
+    return () => clearInterval(spawnTimer.current);
+  }, [isPlaying, spawnRate]);
+
+  // Difficulty scaling
   useEffect(() => {
-    const animationInterval = setInterval(() => {
-      setWasteItems((prev) =>
-        prev
-          .map((waste) => ({
-            ...waste,
-            position: waste.position + 1.5,
-          }))
-          .filter((waste) => waste.position < 100)
-      );
-    }, 30);
+    if (score > 10) { setSpeed(4); setSpawnRate(2000); }
+    if (score > 25) { setSpeed(3); setSpawnRate(1500); }
+    if (score > 50) { setSpeed(2.5); setSpawnRate(1200); }
+  }, [score]);
 
-    return () => clearInterval(animationInterval);
-  }, []);
-
-  const handleWasteClick = (wasteId: number, wasteType: string) => {
-    if (selectedBin === null || !gameActive) return;
-
-    const waste = wasteItems.find((w) => w.id === wasteId);
-    if (!waste) return;
-
-    const isCorrect = BINS[selectedBin].accepts.includes(wasteType);
-
-    if (isCorrect) {
-      setScore((prev) => prev + 1);
-      setCombo((prev) => prev + 1);
-      onAddPoints(1);
-      setFeedback({
-        message: '+1 Punkt! Richtig!',
-        type: 'correct',
-        x: waste.position,
-        y: 70,
-      });
-      playSound('correct');
-    } else {
-      setCombo(0);
-      onAddPoints(-1);
-      setHearts((prev) => {
-        const newHearts = prev - 1;
-        if (newHearts <= 0) {
-          setGameActive(false);
-        }
-        return newHearts;
-      });
-      setFeedback({
-        message: '❌ Falsch!',
-        type: 'wrong',
-        x: waste.position,
-        y: 70,
-      });
-      playSound('wrong');
+  // Audio helper
+  const playSound = (type: 'success' | 'fail' | 'pop') => {
+    if (!soundEnabled) return;
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    
+    if (type === 'success') {
+      osc.frequency.setValueAtTime(400, ctx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(800, ctx.currentTime + 0.1);
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+      osc.start(); osc.stop(ctx.currentTime + 0.3);
+    } else if (type === 'fail') {
+      osc.frequency.setValueAtTime(200, ctx.currentTime);
+      osc.frequency.linearRampToValueAtTime(100, ctx.currentTime + 0.3);
+      osc.type = 'sawtooth';
+      gain.gain.setValueAtTime(0.1, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.01, ctx.currentTime + 0.3);
+      osc.start(); osc.stop(ctx.currentTime + 0.3);
     }
-
-    setWasteItems((prev) => prev.filter((w) => w.id !== wasteId));
-    setSelectedBin(null);
-
-    setTimeout(() => setFeedback(null), 1500);
   };
 
-  const playSound = (type: 'correct' | 'wrong') => {
-    if (!soundEnabled) return;
+  const handleDragEnd = (event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo, item: GameItem) => {
+    // Calculate drop position
+    const dropPoint = { x: info.point.x, y: info.point.y };
+    
+    let droppedInBin = null;
 
-    const audioContext = new (window.AudioContext ||
-      (window as any).webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
+    // Check collision with all bins
+    binRefs.current.forEach((ref, binId) => {
+      const rect = ref.getBoundingClientRect();
+      if (
+        dropPoint.x >= rect.left &&
+        dropPoint.x <= rect.right &&
+        dropPoint.y >= rect.top &&
+        dropPoint.y <= rect.bottom
+      ) {
+        droppedInBin = binId;
+      }
+    });
 
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-
-    if (type === 'correct') {
-      oscillator.frequency.value = 800;
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(
-        0.01,
-        audioContext.currentTime + 0.2
-      );
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.2);
+    if (droppedInBin) {
+      verifySort(item, droppedInBin);
     } else {
-      oscillator.frequency.value = 300;
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(
-        0.01,
-        audioContext.currentTime + 0.3
-      );
-      oscillator.start(audioContext.currentTime);
-      oscillator.stop(audioContext.currentTime + 0.3);
+      // If dropped nowhere, it stays on screen but framer motion snaps it back or we can leave it?
+      // Better to verify if dragged OFF the belt (downwards) -> maybe counts as "trash bin"? No.
+      // Just snap back logic is handled by 'dragConstraints' or lack thereof, causing it to return visually?
+      // We will remove it if it was processed, otherwise it snaps back due to layout animation resume? 
+      // Actually, simplest is: if not dropped in bin, it continues existing. 
+      // But Framer Motion drag interrupted the layout animation. We need to handle this.
     }
+  };
+
+  const verifySort = (item: GameItem, binId: string) => {
+    const bin = BINS.find(b => b.id === binId);
+    if (!bin) return;
+
+    const isCorrect = bin.accepts.includes(item.data.type);
+
+    // Remove item
+    setItems(prev => prev.filter(i => i.id !== item.id));
+
+    if (isCorrect) {
+      const bonus = score > 0 && score % 10 === 0 ? 5 : 1;
+      setScore(s => s + bonus);
+      onAddPoints(bonus);
+      playSound('success');
+      showFeedback(item.id, 'Super!', 'good', binId);
+    } else {
+      setHearts(h => {
+        const next = h - 1;
+        if (next <= 0) setIsPlaying(false);
+        return next;
+      });
+      onAddPoints(-1);
+      playSound('fail');
+      showFeedback(item.id, 'Falsch!', 'bad', binId);
+    }
+  };
+
+  const showFeedback = (id: number, text: string, type: 'good' | 'bad', binId: string) => {
+    const binRect = binRefs.current.get(binId)?.getBoundingClientRect();
+    if (binRect) {
+      setFeedback({
+        id,
+        text,
+        type,
+        x: binRect.left + binRect.width / 2, // Center of bin relative to viewport? 
+        // Actually we need relative to container or simplified fixed position handling
+        // For simplicity, we'll map binId to a fixed percent or center it
+        y: binRect.top 
+      });
+      setTimeout(() => setFeedback(null), 1000);
+    }
+  };
+
+  const handleMissedItem = (itemId: number) => {
+    // Only call this if item actually completes animation without user interaction
+    setItems(prev => {
+      const exists = prev.find(i => i.id === itemId);
+      if (!exists) return prev; // Already sorted
+      
+      // Reduce hearts if missed? Or just recycle bin? 
+      // Let's reduce hearts to make it a game.
+      setHearts(h => {
+        const next = h - 1;
+        if (next <= 0) setIsPlaying(false);
+        return next;
+      });
+      playSound('fail');
+      return prev.filter(i => i.id !== itemId);
+    });
   };
 
   const restartGame = () => {
     setScore(0);
-    setCombo(0);
     setHearts(3);
-    setGameActive(true);
-    setWasteItems([]);
-    setSelectedBin(null);
-    setFeedback(null);
-    setScannedWaste(null);
+    setItems([]);
+    setSpeed(5);
+    setSpawnRate(2500);
+    setIsPlaying(true);
   };
 
-  const scanWaste = (type: string) => {
-    const wasteInfo = WASTE_ITEMS.find((w) => w.type === type);
-    if (wasteInfo) {
-      setScannedWaste(wasteInfo.correctBin);
-      setTimeout(() => setScannedWaste(null), 3000);
-    }
-  };
-
-  if (!gameActive && hearts <= 0) {
+  if (!isPlaying && hearts <= 0) {
     return (
-      <section className="py-16 px-4 bg-gradient-to-b from-white to-green-50">
-        <div className="container mx-auto max-w-3xl">
-          <div className="bg-white rounded-3xl shadow-2xl p-8 md:p-12 text-center">
-            <h2 className="text-4xl font-bold text-gray-800 mb-6">
-              Spiel vorbei!
-            </h2>
-            <p className="text-5xl font-bold text-green-600 mb-4">{score}</p>
-            <p className="text-xl text-gray-600 mb-8">
-              {score > 50
-                ? 'Großartig! Du bist ein Müll-Sortier-Experte!'
-                : score > 30
-                  ? 'Gut gemacht! Immer besser!'
-                  : 'Guter Anfang! Übe noch mehr!'}
-            </p>
-            <button
-              onClick={() => {
-                restartGame();
-                onGameComplete(score);
-              }}
-              className="bg-green-600 hover:bg-green-700 text-white font-bold px-8 py-4 rounded-full shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-300"
-            >
-              Zurück zum Menü
-            </button>
-          </div>
-        </div>
-      </section>
+      <div className="flex flex-col items-center justify-center p-10 bg-white rounded-3xl shadow-xl max-w-2xl mx-auto mt-10">
+        <Trophy className="w-20 h-20 text-yellow-500 mb-6" />
+        <h2 className="text-4xl font-bold text-gray-800 mb-2">Spiel Vorbei!</h2>
+        <p className="text-xl text-gray-500 mb-6">Du hast {score} Punkte erreicht.</p>
+        <button
+          onClick={restartGame}
+          className="bg-green-600 hover:bg-green-700 text-white text-xl font-bold py-4 px-10 rounded-full shadow-lg transform transition hover:scale-105"
+        >
+          Nochmal spielen 🔄
+        </button>
+      </div>
     );
   }
 
   return (
-    <section className="py-8 px-4 bg-gradient-to-b from-green-50 to-blue-50 min-h-screen">
-      <div className="container mx-auto max-w-6xl">
-        <div className="mb-6">
-          <div className="flex justify-between items-center mb-4">
-            <div>
-              <h2 className="text-3xl font-bold text-gray-800">
-                Förderband Sortier-Spiel
-              </h2>
-              <p className="text-gray-600">
-                Sortiere den Müll in die richtige Tonne!
-              </p>
-            </div>
-            <div className="text-right space-y-2">
-              <div className="text-2xl font-bold text-yellow-600">
-                Punkte: {score}
-              </div>
-              <div className="text-2xl font-bold text-red-600">
-                Herzen: {'❤️'.repeat(hearts)}
-              </div>
-              {combo > 0 && (
-                <div className="text-xl font-bold text-green-600">
-                  Combo: {combo}x
-                </div>
-              )}
-            </div>
+    <div className="relative w-full max-w-6xl mx-auto p-4 select-none">
+      
+      {/* Header Info */}
+      <div className="flex justify-between items-center mb-8 bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+        <div className="flex items-center gap-4">
+          <div className="text-center">
+            <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Score</p>
+            <p className="text-3xl font-black text-green-600">{score}</p>
           </div>
-
-          <div className="flex gap-2 justify-center">
-            <button
-              onClick={() => setSoundEnabled(!soundEnabled)}
-              className="flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-700 font-semibold px-4 py-2 rounded-lg shadow-md transition-colors"
-            >
-              {soundEnabled ? (
-                <Volume2 className="w-5 h-5" />
-              ) : (
-                <VolumeX className="w-5 h-5" />
-              )}
-              {soundEnabled ? 'Sound an' : 'Sound aus'}
-            </button>
-            <button
-              onClick={restartGame}
-              className="flex items-center gap-2 bg-white hover:bg-gray-100 text-gray-700 font-semibold px-4 py-2 rounded-lg shadow-md transition-colors"
-            >
-              <RotateCcw className="w-5 h-5" />
-              Neustarten
-            </button>
+          <div className="h-10 w-[1px] bg-gray-200"></div>
+          <div className="flex gap-1">
+            {[...Array(3)].map((_, i) => (
+               <Heart key={i} className={`w-8 h-8 ${i < hearts ? 'fill-red-500 text-red-500' : 'text-gray-300'}`} />
+            ))}
           </div>
         </div>
-
-        <div className="bg-white rounded-3xl shadow-2xl p-8 mb-8 overflow-hidden relative">
-          <div className="relative h-96 bg-gradient-to-b from-gray-100 to-gray-50 rounded-2xl overflow-hidden">
-            <div className="absolute inset-0">
-              {wasteItems.map((waste) => (
-                <button
-                  key={waste.id}
-                  onClick={() => handleWasteClick(waste.id, waste.type)}
-                  className={`absolute text-5xl cursor-pointer hover:scale-125 transition-transform duration-200 ${
-                    selectedBin ? 'opacity-100' : 'opacity-75'
-                  }`}
-                  style={{
-                    left: `${waste.position}%`,
-                    top: '20%',
-                  }}
-                  title={
-                    WASTE_ITEMS.find((w) => w.type === waste.type)?.name
-                  }
-                >
-                  {waste.icon}
-                </button>
-              ))}
-
-              {feedback && (
-                <div
-                  className={`absolute text-center font-bold text-lg pointer-events-none animate-bounce ${
-                    feedback.type === 'correct'
-                      ? 'text-green-600'
-                      : 'text-red-600'
-                  }`}
-                  style={{
-                    left: `${feedback.x}%`,
-                    top: `${feedback.y}%`,
-                  }}
-                >
-                  {feedback.message}
-                </div>
-              )}
-
-              {scannedWaste && (
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                  <div className="bg-black/70 text-white px-6 py-4 rounded-lg text-center animate-pulse">
-                    <p className="font-bold text-lg mb-2">Müll in diese Tonne!</p>
-                    <p className="text-5xl">{BINS[scannedWaste].icon}</p>
-                    <p className="font-bold text-lg mt-2">{BINS[scannedWaste].name}</p>
-                  </div>
-                </div>
-              )}
-
-              <div className="absolute bottom-0 left-0 right-0 h-20 bg-gradient-to-b from-transparent via-gray-400 to-gray-600 pointer-events-none">
-                <div className="absolute inset-0 opacity-30" style={{
-                  backgroundImage: 'repeating-linear-gradient(90deg, transparent, transparent 20px, rgba(255,255,255,0.3) 20px, rgba(255,255,255,0.3) 40px)',
-                  animation: 'slide 2s linear infinite'
-                }} />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <style>{`
-          @keyframes slide {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(40px); }
-          }
-        `}</style>
-
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-          {Object.entries(BINS).map(([binKey, bin]) => (
-            <div key={binKey} className="flex flex-col gap-2">
-              <button
-                onClick={() =>
-                  setSelectedBin(selectedBin === binKey ? null : binKey)
-                }
-                className={`p-4 rounded-2xl transition-all duration-300 flex-1 ${
-                  selectedBin === binKey
-                    ? `bg-gradient-to-br ${bin.color} text-white scale-110 shadow-2xl`
-                    : `bg-white border-2 border-gray-200 hover:border-gray-400 shadow-md`
-                }`}
-              >
-                <div className="text-5xl mb-2">{bin.icon}</div>
-                <div
-                  className={`font-bold text-sm ${
-                    selectedBin === binKey ? 'text-white' : 'text-gray-800'
-                  }`}
-                >
-                  {bin.name}
-                </div>
-                {selectedBin === binKey && (
-                  <div
-                    className={`text-xs mt-2 ${
-                      selectedBin === binKey
-                        ? 'text-white/90'
-                        : 'text-gray-600'
-                    }`}
-                  >
-                    Wählt: Klick auf Müll!
-                  </div>
-                )}
-              </button>
-              <button
-                onClick={() => scanWaste(Object.keys(WASTE_ITEMS.reduce((acc: any, item) => {
-                  if (item.correctBin === binKey) acc[item.type] = true;
-                  return acc;
-                }, {}))[0] || '')}
-                className={`py-2 px-2 rounded-lg text-sm font-semibold transition-all ${
-                  selectedBin === binKey
-                    ? `bg-gradient-to-br ${bin.color} text-white shadow-lg`
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                }`}
-                disabled={!gameActive}
-              >
-                📱 Scan
-              </button>
-            </div>
-          ))}
-        </div>
-
-        <div className="mt-8 bg-blue-50 border-2 border-blue-200 rounded-2xl p-6">
-          <h3 className="font-bold text-lg text-gray-800 mb-3 flex items-center gap-2">
-            <Trash2 className="w-5 h-5" />
-            Spielregeln
-          </h3>
-          <ul className="space-y-2 text-gray-700">
-            <li>
-              ✓ Wähle eine Mülltonne durch Klick (wird größer und farbig)
-            </li>
-            <li>
-              ✓ Klicke dann auf den Müll, um ihn in die Tonne zu werfen
-            </li>
-            <li>✓ Oder nutze 📱 Scan um Hilfe zu bekommen!</li>
-            <li>✓ Richtig sortiert = +1 Punkt</li>
-            <li>✗ Falsch sortiert = -1 Herz</li>
-            <li>❤️ Du hast 3 Herzen - 3 Fehler = Spielende!</li>
-          </ul>
+        
+        <div className="flex gap-2">
+           <button onClick={() => setSoundEnabled(!soundEnabled)} className="p-2 rounded-full hover:bg-gray-100 text-gray-500">
+             {soundEnabled ? <Volume2 /> : <VolumeX />}
+           </button>
+           <button onClick={restartGame} className="p-2 rounded-full hover:bg-gray-100 text-gray-500" title="Neustart">
+             <RotateCcw />
+           </button>
         </div>
       </div>
-    </section>
+
+      {/* Game Area */}
+      <div className="relative bg-gray-100 rounded-3xl border-4 border-gray-300 overflow-hidden h-[500px] shadow-inner mb-6" ref={beltRef}>
+        
+        {/* Conveyor Belt Visuals */}
+        <div className="absolute top-[30%] left-0 right-0 h-40 bg-[#333] border-y-8 border-[#222]">
+           {/* Moving texture attempt using CSS animation */}
+           <div className="absolute inset-0 opacity-20" style={{
+             backgroundImage: 'repeating-linear-gradient(90deg, transparent 0, transparent 40px, #000 40px, #000 44px)',
+             animation: isPlaying ? 'moveBelt 1s linear infinite' : 'none'
+           }}></div>
+        </div>
+        <style>{`@keyframes moveBelt { from { background-position: 0 0; } to { background-position: -44px 0; } }`}</style>
+        
+        {/* Spawned Items (Draggable) */}
+        <AnimatePresence>
+          {items.map(item => (
+            <WasteItem 
+              key={item.id} 
+              item={item} 
+              duration={speed} 
+              onDragEnd={handleDragEnd}
+              onMissed={handleMissedItem}
+              isPlaying={isPlaying}
+            />
+          ))}
+        </AnimatePresence>
+
+        {/* Bins Display (Bottom) */}
+        <div className="absolute bottom-4 left-4 right-4 flex justify-around items-end gap-2">
+           {BINS.map(bin => (
+             <div 
+               key={bin.id}
+               ref={(el) => { if(el) binRefs.current.set(bin.id, el); }}
+               className={`
+                 relative flex flex-col items-center justify-end p-4 rounded-xl border-b-8 w-1/4 h-48 transition-colors
+                 ${bin.bgGradient} ${bin.color}
+               `}
+             >
+                <div className="text-5xl mb-2 filter drop-shadow-lg transform transition-transform hover:scale-110">
+                  {bin.icon}
+                </div>
+                <div className="bg-white/90 px-3 py-1 rounded-full font-bold text-gray-700 text-sm shadow-sm whitespace-nowrap">
+                  {bin.name}
+                </div>
+             </div>
+           ))}
+        </div>
+
+        {/* Feedback Popup */}
+        <AnimatePresence>
+          {feedback && (
+            <motion.div
+              initial={{ opacity: 0, y: 20, scale: 0.5 }}
+              animate={{ opacity: 1, y: 0, scale: 1.2 }}
+              exit={{ opacity: 0 }}
+              className={`absolute z-50 px-6 py-2 rounded-full font-bold text-white shadow-xl ${feedback.type === 'good' ? 'bg-green-500' : 'bg-red-500'}`}
+              style={{ 
+                // We use fixed positioning hack or simple centering for now, as absolute mapping is complex with refs + viewport
+                left: '50%', 
+                top: '20%', 
+                transform: 'translate(-50%, -50%)'
+              }}
+            >
+              {feedback.text}
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+      </div>
+      
+      <div className="text-center text-gray-500 text-sm">
+        💡 Tipp: Ziehe den Müll mit der Maus oder dem Finger in die richtige Tonne!
+      </div>
+    </div>
+  );
+}
+
+// --- Subcomponent: Draggable Waste Item ---
+interface WasteItemProps {
+  item: GameItem;
+  duration: number;
+  onDragEnd: (e: any, info: any, item: GameItem) => void;
+  onMissed: (id: number) => void;
+  isPlaying: boolean;
+}
+
+function WasteItem({ item, duration, onDragEnd, onMissed, isPlaying }: WasteItemProps) {
+  // We need to track if dragging to pause visual belt movement? 
+  // Actually, framer motion 'drag' automatically decouples from layout/animate.
+  
+  return (
+    <motion.div
+      layoutId={`waste-${item.id}`}
+      initial={{ x: '110%', y: '160%' }} // Starting right, centered vertically on belt (approx 160px from top options)
+      animate={{ 
+        x: '-20%',
+        transition: { 
+           duration: duration, 
+           ease: 'linear',
+           repeat: 0 
+        }
+      }}
+      onAnimationComplete={() => onMissed(item.id)}
+      drag
+      dragSnapToOrigin // Snaps back if dropped in void (nice touch)
+      dragElastic={0.1}
+      dragMomentum={false}
+      whileDrag={{ scale: 1.2, rotate: 15, cursor: 'grabbing', zIndex: 50 }}
+      whileHover={{ scale: 1.1, cursor: 'grab' }}
+      onDragEnd={(e, info) => onDragEnd(e, info, item)}
+      className="absolute top-0 left-0 text-6xl select-none touch-none filter drop-shadow-xl"
+      style={{ 
+        y: 140 + item.lane // Base Y offset to sit ON the belt
+      }}
+    >
+      {item.data.icon}
+    </motion.div>
   );
 }
