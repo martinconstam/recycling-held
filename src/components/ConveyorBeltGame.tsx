@@ -281,7 +281,7 @@ export default function ConveyorBeltGame({ onGameComplete, onAddPoints }: Convey
       <div className="relative bg-gray-100 rounded-3xl border-4 border-gray-300 overflow-hidden h-[500px] shadow-inner mb-6" ref={beltRef}>
         
         {/* Conveyor Belt Visuals */}
-        <div className="absolute top-[30%] left-0 right-0 h-40 bg-[#333] border-y-8 border-[#222]">
+        <div className="absolute top-[20%] left-0 right-0 h-40 bg-[#333] border-y-8 border-[#222] z-0">
            <div className="absolute inset-0 opacity-20" style={{
              backgroundImage: 'repeating-linear-gradient(90deg, transparent 0, transparent 40px, #000 40px, #000 44px)',
              animation: isPlaying ? 'moveBelt 1s linear infinite' : 'none'
@@ -304,7 +304,7 @@ export default function ConveyorBeltGame({ onGameComplete, onAddPoints }: Convey
         </AnimatePresence>
 
         {/* Bins */}
-        <div className="absolute bottom-4 left-4 right-4 flex justify-around items-end gap-2">
+        <div className="absolute bottom-4 left-4 right-4 flex justify-around items-end gap-2 z-10">
            {BINS.map(bin => (
              <div 
                key={bin.id}
@@ -312,7 +312,7 @@ export default function ConveyorBeltGame({ onGameComplete, onAddPoints }: Convey
                className={`
                  relative flex flex-col items-center justify-end p-4 rounded-xl border-b-8 w-1/4 h-48 transition-all duration-200
                  ${bin.bgGradient} ${bin.color}
-                 ${hoveredBin === bin.id ? 'scale-110 ring-4 ring-white shadow-2xl z-10' : 'opacity-90'}
+                 ${hoveredBin === bin.id ? 'scale-110 ring-4 ring-white shadow-2xl z-20' : 'opacity-90'}
                `}
              >
                 <div className="text-5xl mb-2 filter drop-shadow-lg transform transition-transform">
@@ -400,9 +400,9 @@ function WasteItem({ item, duration, onDragEnd, onDrag, onMissed }: WasteItemPro
       }}
       whileDrag={{ scale: 1.2, rotate: 15, cursor: 'grabbing', zIndex: 50 }}
       whileHover={{ scale: 1.1, cursor: 'grab', zIndex: 40 }}
-      className="absolute top-0 text-6xl select-none touch-none filter drop-shadow-xl"
+      className="absolute top-0 text-6xl select-none touch-none filter drop-shadow-xl z-20"
       style={{ 
-        y: 190 + item.lane 
+        y: 140 + item.lane 
       }}
     >
       {item.data.icon}
