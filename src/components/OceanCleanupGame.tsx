@@ -200,9 +200,55 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
           
           const waveAmplitude = 20; 
           const waveFrequency = 0.02;
-// ... (rest of logic) ...
-// ...
-             {/* Plants - Gentle Sway */}
+          const newX = item.startX + Math.sin(newY * waveFrequency) * waveAmplitude;
+
+          // Check if entering water
+          let justEntered = false;
+          if (!item.enteredWater && newY > waterLevel) {
+              justEntered = true;
+          }
+
+          if (justEntered) {
+             // Trigger Splash Effect on Entry
+             splashIdCounter.current += 1;
+             const newSplash = { id: splashIdCounter.current, x: newX, y: waterLevel };
+             setSplashes(current => {
+                 const updated = [...current, newSplash];
+                 setTimeout(() => {
+                    setSplashes(curr => curr.filter(s => s.id !== newSplash.id));
+                 }, 500);
+                 return updated;
+             });
+             playSound('splash');
+          }
+
+          if (newY > containerHeight) {
+             if (!hitBottom) {
+                 hitBottom = true; 
+                 hitX = item.x;
+             }
+          } else {
+            nextItems.push({ 
+                ...item, 
+                x: newX, 
+                y: newY, 
+                rotation: item.rotation + 1,
+                enteredWater: item.enteredWater || justEntered
+            });
+          }
+        });
+
+        if (hitBottom) {
+             triggerMissedTrashEffects(hitX);
+             setHearts(h => {
+                const newH = h - 1;
+                if (newH <= 0) setIsPlaying(false);
+                return newH;
+             });
+        }
+
+        return nextItems;
+      });
                <div className="absolute bottom-0 left-0 w-full h-32 flex justify-around px-8 items-end pointer-events-none z-20">
                    {[...Array(6)].map((_, i) => (
                        <motion.div 
