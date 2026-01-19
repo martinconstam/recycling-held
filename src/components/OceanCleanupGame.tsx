@@ -656,7 +656,7 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
 
           {/* Game Over Overlay */}
           {!isPlaying && hearts <= 0 && (
-            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-1000">
+            <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-1000 cursor-default">
               <div className="flex flex-col items-center justify-center p-10 bg-white/90 backdrop-blur-md rounded-3xl shadow-2xl max-w-2xl mx-auto border-4 border-gray-800">
                 <Trophy className="w-24 h-24 text-gray-800 mb-6" />
                 <h2 className="text-4xl font-black text-gray-900 mb-2">Ozean Zerstört!</h2>
