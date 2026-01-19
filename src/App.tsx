@@ -4,7 +4,6 @@ import HeroSection from './components/HeroSection';
 import ProcessSection from './components/ProcessSection';
 import QuizSection from './components/QuizSection';
 import AvatarSelection from './components/AvatarSelection';
-import PlayerProfile from './components/PlayerProfile';
 import Leaderboard from './components/Leaderboard';
 import ConveyorBeltGame from './components/ConveyorBeltGame';
 import OceanCleanupGame from './components/OceanCleanupGame';
@@ -15,7 +14,7 @@ import {
   getLeaderboard,
   Profile,
 } from './services/supabase';
-import { Gamepad2, BookOpen, Trophy, Waves } from 'lucide-react';
+import { Gamepad2, BookOpen, Trophy } from 'lucide-react';
 
 function App() {
   const processSectionRef = useRef<HTMLDivElement>(null);
@@ -74,7 +73,7 @@ function App() {
   if (activeGame === 'conveyor') {
     return (
       <div className="min-h-screen bg-white">
-        <Header profileName={profile?.username} />
+        <Header profile={profile} />
         <ConveyorBeltGame
           onGameComplete={() => setActiveGame(null)}
           onAddPoints={handleAddPoints}
