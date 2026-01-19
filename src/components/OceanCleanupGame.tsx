@@ -166,10 +166,14 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
       // Spawn Trash
       if (timestamp - lastSpawnTime.current > spawnInterval) {
         const randomType = TRASH_TYPES[Math.floor(Math.random() * TRASH_TYPES.length)];
-        const startX = Math.random() * (gameContainerRef.current?.clientWidth || 800);
+        const width = ubGameContainerWidth();
+        const padding = 60; // Safe zone for sway
+        // Ensure startX is well within bounds so sine wave (+/- 20px) doesn't go out
+        const startX = padding + Math.random() * (width - 2 * padding);
+        
         const newTrash: TrashItem = {
           id: timestamp,
-          startX: startX, // Store initial X for sine wave calculation
+          startX: startX, 
           x: startX,
           y: -50,
           type: randomType.type as any,
@@ -507,8 +511,11 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
                ))}
           </div>
 
-          {/* --- Improved Sand Floor --- */}
-          <div className="absolute bottom-0 w-full h-40 z-10 pointer-events-none">
+      {/* Spawn Trash Logic Update - effectively constrained in next check, but visual render needs to be updated or logic block needs to be updated. Since this is a big file, I will target the specific blocks. */}
+      {/* ... */}
+      
+          {/* --- Sand Floor & Plants --- */}
+          <div className="absolute bottom-0 w-full h-40 z-10 pointers-events-none">
              {/* Back Dune */}
              <svg className="absolute bottom-0 w-full h-32" preserveAspectRatio="none" viewBox="0 0 1440 320">
                <path fill="#C2B280" fillOpacity="1" d="M0,224L48,213.3C96,203,192,181,288,181.3C384,181,480,203,576,224C672,245,768,267,864,261.3C960,256,1056,224,1152,197.3C1248,171,1344,149,1392,138.7L1440,128L1440,320L1392,320C1344,320,1248,320,1152,320C1056,320,960,320,864,320C768,320,672,320,576,320C480,320,384,320,288,320C192,320,96,320,48,320L0,320Z"></path>
@@ -525,18 +532,25 @@ export default function OceanCleanupGame({ onGameComplete, onAddPoints, onBack }
                <rect width="100%" height="100%" fill="url(#sandPattern)" style={{mixBlendMode: 'overlay'}} clipPath="url(#frontDuneClip)" />
              </svg>
              
-             {/* Plants */}
+             {/* Plants - Gentle Sway */}
                <div className="absolute bottom-0 left-0 w-full h-32 flex justify-around px-8 items-end pointer-events-none z-20">
                    {[...Array(6)].map((_, i) => (
-                       <div 
+                       <motion.div 
                          key={i}
+                         animate={{ rotate: [0, 5, 0, -5, 0] }}
+                         transition={{ 
+                             duration: 8 + Math.random() * 4, // 8-12 seconds cycle (very slow)
+                             repeat: Infinity, 
+                             ease: 'easeInOut', 
+                             delay: i * 1.5 
+                         }}
                          className="origin-bottom filter brightness-90"
                          style={{ transform: `scale(${0.8 + Math.random() * 0.5})` }}
                        >
                            <span className="text-5xl drop-shadow-md">
                                {['🌿', '🪸', '🎍', '🌾'][i % 4]}
                            </span>
-                       </div>
+                       </motion.div>
                    ))}
                </div>
           </div>
